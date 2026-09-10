@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TutorController;
+use App\Http\Controllers\TutorStudentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,16 +31,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
 
-    Route::prefix('tutor')->middleware('role:tutor')->group(function () {
-        Route::get('/dashboard', [TutorController::class, 'dashboard'])->name('tutor.dashboard');
-        Route::get('/students', [TutorController::class, 'students'])->name('tutor.students');
-    });
+Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
+    Route::get('/dashboard', [TutorController::class, 'dashboard'])->name('tutor.dashboard');
+    Route::get('/students', [TutorStudentController::class, 'index'])->name('tutor.students');
+    Route::delete('/students/{student}', [TutorStudentController::class, 'destroy'])
+        ->whereNumber('student')
+        ->name('tutor.students.destroy');
+    Route::post('/invitations', [TutorStudentController::class, 'storeInvitation'])->name('tutor.invitations.store');
+    Route::delete('/invitations/{invitation}', [TutorStudentController::class, 'destroyInvitation'])
+        ->whereNumber('invitation')
+        ->name('tutor.invitations.destroy');
+});
 
-    Route::prefix('student')->middleware('role:student')->group(function () {
-        Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
-        Route::get('/assignments', [StudentController::class, 'assignments'])->name('student.assignments');
-    });
+Route::middleware(['auth', 'role:student'])->prefix('student')->group(function () {
+    Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
+    Route::post('/invitations/redeem', [StudentController::class, 'redeemInvitation'])->name('student.invitations.redeem');
+    Route::get('/assignments', [StudentController::class, 'assignments'])->name('student.assignments');
 });
 
 require __DIR__.'/auth.php';

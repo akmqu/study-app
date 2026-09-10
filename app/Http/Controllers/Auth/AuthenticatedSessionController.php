@@ -35,11 +35,17 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->role === 'tutor') {
-            return redirect()->intended(route('tutor.dashboard', absolute: false));
+        $home = $user->role === 'tutor'
+            ? route('tutor.dashboard', absolute: false)
+            : route('student.dashboard', absolute: false);
+
+        $intended = $request->session()->pull('url.intended');
+
+        if (is_string($intended) && $this->intendedUrlIsAllowedForRole($intended, $user->role)) {
+            return redirect()->to($intended);
         }
 
-        return redirect()->intended(route('student.dashboard', absolute: false));
+        return redirect()->to($home);
     }
 
     /**
@@ -54,5 +60,20 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function intendedUrlIsAllowedForRole(string $url, string $role): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?? '';
+
+        if ($path === '/dashboard') {
+            return true;
+        }
+
+        return match ($role) {
+            'tutor' => str_starts_with($path, '/tutor'),
+            'student' => str_starts_with($path, '/student'),
+            default => false,
+        };
     }
 }

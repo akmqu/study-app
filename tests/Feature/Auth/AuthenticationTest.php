@@ -67,3 +67,31 @@ test('tutors cannot access student dashboard', function () {
 
     $response->assertForbidden();
 });
+
+test('students logging in ignore a stale tutor intended url', function () {
+    $student = User::factory()->student()->create();
+
+    $this->get(route('tutor.students'))->assertRedirect(route('login'));
+
+    $response = $this->post('/login', [
+        'email' => $student->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('student.dashboard', absolute: false));
+});
+
+test('tutors logging in ignore a stale student intended url', function () {
+    $tutor = User::factory()->tutor()->create();
+
+    $this->get(route('student.dashboard'))->assertRedirect(route('login'));
+
+    $response = $this->post('/login', [
+        'email' => $tutor->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('tutor.dashboard', absolute: false));
+});
