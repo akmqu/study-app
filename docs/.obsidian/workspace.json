@@ -125,12 +125,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "08_student_courses.md",
+                "file": "changelog.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "08_student_courses"
+              "title": "changelog"
             }
           }
         ],
@@ -154,7 +154,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Files"
@@ -207,7 +209,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "08_student_courses.md",
+                "file": "changelog.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -217,7 +219,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for 08_student_courses"
+              "title": "Backlinks for changelog"
             }
           },
           {
@@ -226,12 +228,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "08_student_courses.md",
+                "file": "changelog.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from 08_student_courses"
+              "title": "Outgoing links from changelog"
             }
           },
           {
@@ -269,13 +271,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "08_student_courses.md",
+                "file": "changelog.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 08_student_courses"
+              "title": "Outline of changelog"
             }
           }
         ]
@@ -298,6 +300,8 @@
   },
   "active": "1598087b7e5a9801",
   "lastOpenFiles": [
+    "08_student_courses.md",
+    "changelog.md",
     "07_student_payments.md",
     "06_student_assignments.md",
     "04_tutor_payments.md",
@@ -305,7 +309,6 @@
     "00_program.md",
     "01_tutor_dashboard.md",
     "03_tutor_calendar.md",
-    "08_student_courses.md",
     "Untitled.md",
     "05_student_dashboard.md",
     "wikilinks.md",

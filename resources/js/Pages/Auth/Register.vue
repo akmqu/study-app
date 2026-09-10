@@ -11,6 +11,7 @@ const form = useForm({
     email: '',
     password: '',
     password_confirmation: '',
+    role: 'student', // Значення за замовчуванням
 });
 
 const submit = () => {
@@ -54,6 +55,23 @@ const submit = () => {
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
+            </div>
+
+            <!-- Блок вибору ролі (Student або Tutor) -->
+            <div class="mt-4">
+                <InputLabel for="role" value="I am a..." />
+
+                <select
+                    id="role"
+                    v-model="form.role"
+                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                    required
+                >
+                    <option value="student">Student</option>
+                    <option value="tutor">Tutor</option>
+                </select>
+
+                <InputError class="mt-2" :message="form.errors.role" />
             </div>
 
             <div class="mt-4">

@@ -8,8 +8,8 @@ test('login screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
-test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+test('students can authenticate using the login screen', function () {
+    $user = User::factory()->student()->create();
 
     $response = $this->post('/login', [
         'email' => $user->email,
@@ -17,7 +17,19 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('student.dashboard', absolute: false));
+});
+
+test('tutors can authenticate using the login screen', function () {
+    $user = User::factory()->tutor()->create();
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('tutor.dashboard', absolute: false));
 });
 
 test('users can not authenticate with invalid password', function () {
@@ -38,4 +50,20 @@ test('users can logout', function () {
 
     $this->assertGuest();
     $response->assertRedirect('/');
+});
+
+test('students cannot access tutor dashboard', function () {
+    $user = User::factory()->student()->create();
+
+    $response = $this->actingAs($user)->get(route('tutor.dashboard'));
+
+    $response->assertForbidden();
+});
+
+test('tutors cannot access student dashboard', function () {
+    $user = User::factory()->tutor()->create();
+
+    $response = $this->actingAs($user)->get(route('student.dashboard'));
+
+    $response->assertForbidden();
 });
