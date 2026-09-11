@@ -32,15 +32,47 @@ class User extends Authenticatable
         ];
     }
 
+    public function tutorStudents(): HasMany
+    {
+        return $this->hasMany(TutorStudent::class, 'tutor_id');
+    }
+
+    public function studentTutors(): HasMany
+    {
+        return $this->hasMany(TutorStudent::class, 'student_id');
+    }
+
     public function students(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'tutor_student', 'tutor_id', 'student_id')
+        return $this->belongsToMany(
+            User::class,
+            'tutor_student',
+            'tutor_id',
+            'student_id'
+        )
+            ->withPivot([
+                'private_notes',
+                'subject',
+                'lesson_price',
+                'billing_type',
+            ])
             ->withTimestamps();
     }
 
     public function tutors(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'tutor_student', 'student_id', 'tutor_id')
+        return $this->belongsToMany(
+            User::class,
+            'tutor_student',
+            'student_id',
+            'tutor_id'
+        )
+            ->withPivot([
+                'private_notes',
+                'subject',
+                'lesson_price',
+                'billing_type',
+            ])
             ->withTimestamps();
     }
 

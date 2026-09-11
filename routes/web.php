@@ -34,12 +34,30 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
-    Route::get('/dashboard', [TutorController::class, 'dashboard'])->name('tutor.dashboard');
-    Route::get('/students', [TutorStudentController::class, 'index'])->name('tutor.students');
+    Route::get('/dashboard', [TutorController::class, 'dashboard'])
+        ->name('tutor.dashboard');
+
+    Route::post('/assignments', [TutorController::class, 'storeAssignment'])
+        ->name('tutor.assignments.store');
+
+    Route::get('/students', [TutorStudentController::class, 'index'])
+        ->name('tutor.students');
+
+    Route::get('/students/{student}', [TutorStudentController::class, 'show'])
+        ->whereNumber('student')
+        ->name('tutor.students.show');
+
+    Route::patch('/students/{student}/private-notes', [TutorStudentController::class, 'updatePrivateNotes'])
+    ->whereNumber('student')
+    ->name('tutor.students.private-notes.update');
+
     Route::delete('/students/{student}', [TutorStudentController::class, 'destroy'])
         ->whereNumber('student')
         ->name('tutor.students.destroy');
-    Route::post('/invitations', [TutorStudentController::class, 'storeInvitation'])->name('tutor.invitations.store');
+
+    Route::post('/invitations', [TutorStudentController::class, 'storeInvitation'])
+        ->name('tutor.invitations.store');
+
     Route::delete('/invitations/{invitation}', [TutorStudentController::class, 'destroyInvitation'])
         ->whereNumber('invitation')
         ->name('tutor.invitations.destroy');

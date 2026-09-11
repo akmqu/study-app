@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('invitations', function (Blueprint $table) {
-            $table->string('student_name')->nullable()->after('code');
-            $table->string('subject')->nullable()->after('student_name');
+           $table->string('student_name')->nullable()->after('code');
             $table->decimal('price', 10, 2)->nullable()->after('subject');
         });
     }
@@ -21,10 +20,10 @@ return new class extends Migration
     /**
      * Reverse the migrations.
      */
-    public function down(): void
-    {
-        Schema::table('invitations', function (Blueprint $table) {
-            $table->dropColumn(['student_name', 'subject', 'price']);
-        });
-    }
+public function down(): void
+{
+    Schema::table('invitations', function (Blueprint $table) {
+        $table->dropColumn(['student_name', 'price']);
+    });
+}
 };

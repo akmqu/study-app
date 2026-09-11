@@ -6,6 +6,7 @@ use App\Http\Requests\Tutor\StoreInvitationRequest;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -49,8 +50,61 @@ class TutorStudentController extends Controller
         ]);
     }
 
-    public function storeInvitation(StoreInvitationRequest $request): RedirectResponse
+    public function show(User $student): Response
     {
+        $tutor = Auth::user();
+
+        $tutorStudent = $tutor
+            ->students()
+            ->where('users.id', $student->id)
+            ->first();
+
+        if (! $tutorStudent) {
+            abort(404);
+        }
+
+        return Inertia::render('Tutor/StudentProfile', [
+            'student' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'email' => $student->email,
+            ],
+            'privateNotes' => $tutorStudent->pivot?->private_notes ?? '',
+        ]);
+    }
+
+    public function updatePrivateNotes(
+        Request $request,
+        User $student
+    ): RedirectResponse {
+        $tutor = Auth::user();
+
+        $isLinked = $tutor
+            ->students()
+            ->where('users.id', $student->id)
+            ->exists();
+
+        if (! $isLinked) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'private_notes' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $tutor->students()->updateExistingPivot($student->id, [
+            'private_notes' => $validated['private_notes'] ?? null,
+        ]);
+
+        return back()->with(
+            'success',
+            'Private notes saved successfully.'
+        );
+    }
+
+    public function storeInvitation(
+        StoreInvitationRequest $request
+    ): RedirectResponse {
         $tutor = $request->user();
 
         $invitation = $tutor->invitations()->create([
@@ -59,17 +113,23 @@ class TutorStudentController extends Controller
             'subject' => $request->validated('subject'),
             'price' => $request->validated('price'),
             'status' => Invitation::STATUS_PENDING,
-            'expires_at' => now()->addDays(Invitation::DEFAULT_EXPIRY_DAYS),
+            'expires_at' => now()->addDays(
+                Invitation::DEFAULT_EXPIRY_DAYS
+            ),
         ]);
 
         return redirect()
             ->route('tutor.students')
-            ->with('success', "Invitation code {$invitation->code} generated.")
+            ->with(
+                'success',
+                "Invitation code {$invitation->code} generated."
+            )
             ->with('generated_code', $invitation->code);
     }
 
-    public function destroyInvitation(Invitation $invitation): RedirectResponse
-    {
+    public function destroyInvitation(
+        Invitation $invitation
+    ): RedirectResponse {
         $tutor = Auth::user();
 
         if ($invitation->tutor_id !== $tutor->id) {

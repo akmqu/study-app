@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('invitations', function (Blueprint $table) {
-            $table->foreignId('tutor_id')->after('id')->constrained('users')->cascadeOnDelete();
-            $table->string('code', 8)->unique()->after('tutor_id');
-            $table->string('status')->default('pending')->after('code');
-            $table->foreignId('student_id')->nullable()->after('status')->constrained('users')->nullOnDelete();
+            $table->foreignId('student_id')
+                ->nullable()
+                ->after('status')
+                ->constrained('users')
+                ->nullOnDelete();
         });
     }
 
@@ -25,9 +26,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('invitations', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('tutor_id');
-            $table->dropUnique(['code']);
-            $table->dropColumn(['code', 'status']);
             $table->dropConstrainedForeignId('student_id');
         });
     }

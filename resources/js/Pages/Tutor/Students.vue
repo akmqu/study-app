@@ -512,9 +512,14 @@ const formatPrice = (value) => {
                             :key="student.id"
                             class="hover:bg-gray-50"
                         >
-                            <td class="px-4 py-3 font-medium text-gray-900">
-                                {{ student.name }}
-                            </td>
+                            <td class="px-4 py-3 font-medium">
+    <Link
+        :href="route('tutor.students.show', student.id)"
+        class="text-gray-900 hover:text-indigo-600 hover:underline"
+    >
+        {{ student.name }}
+    </Link>
+</td>
                             <td class="px-4 py-3 text-gray-600">
                                 {{ student.email }}
                             </td>
