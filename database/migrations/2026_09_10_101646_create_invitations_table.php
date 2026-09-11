@@ -9,10 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+   public function up(): void
     {
         Schema::create('invitations', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('tutor_id')->constrained('users')->cascadeOnDelete();
+            $table->string('code')->unique(); // Тільки унікальний код/токен
+            $table->string('subject');
+            $table->enum('status', ['pending', 'accepted'])->default('pending');
             $table->timestamps();
         });
     }

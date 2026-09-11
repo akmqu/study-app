@@ -1,4 +1,5 @@
 <script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -227,40 +228,25 @@ const formatPrice = (value) => {
 <template>
     <Head title="Students" />
 
-    <div class="min-h-screen bg-gray-100 p-6">
-        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Students</h1>
-                <p class="mt-1 text-sm text-gray-500">
-                    Generate invitation codes and manage linked learners.
-                </p>
-            </div>
+    <AuthenticatedLayout>
+        <template #header>
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                    Students
+                </h2>
 
-            <div class="flex flex-wrap items-center gap-2">
-                <Link
-                    :href="route('tutor.dashboard')"
-                    class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-                >
-                    Dashboard
-                </Link>
                 <button
                     type="button"
-                    class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 disabled:opacity-50"
+                    class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
                     :disabled="inviteForm.processing"
                     @click="openAddForm"
                 >
                     Add student
                 </button>
-                <Link
-                    :href="route('logout')"
-                    method="post"
-                    as="button"
-                    class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-                >
-                    Log Out
-                </Link>
             </div>
-        </div>
+        </template>
+
+        <div class="min-h-screen bg-gray-100 p-6">
 
         <div
             v-if="successMessage"
@@ -651,4 +637,5 @@ const formatPrice = (value) => {
             </div>
         </Modal>
     </div>
+    </AuthenticatedLayout>
 </template>

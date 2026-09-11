@@ -1,5 +1,6 @@
 <script setup>
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 defineProps({
@@ -32,19 +33,14 @@ const redeem = () => {
 <template>
     <Head title="Student Dashboard" />
 
-    <div class="mx-auto min-h-screen max-w-7xl bg-gray-50 p-6">
-        <div class="mb-6 flex items-center justify-between gap-4">
-            <h1 class="text-2xl font-bold text-gray-900">Student Dashboard</h1>
+    <AuthenticatedLayout>
+        <template #header>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                Student Dashboard
+            </h2>
+        </template>
 
-            <Link
-                :href="route('logout')"
-                method="post"
-                as="button"
-                class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-                Log Out
-            </Link>
-        </div>
+        <div class="mx-auto max-w-7xl bg-gray-50 p-6">
 
         <div
             v-if="successMessage"
@@ -166,4 +162,5 @@ const redeem = () => {
             ></textarea>
         </div>
     </div>
+    </AuthenticatedLayout>
 </template>

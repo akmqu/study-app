@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('lessons', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('tutor_student_id')->constrained('tutor_student')->cascadeOnDelete();
+            $table->dateTime('start_time');
+            $table->enum('status', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->timestamps();
         });
     }

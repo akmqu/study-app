@@ -125,12 +125,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "changelog.md",
+                "file": "02_tutor_students.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "changelog"
+              "title": "02_tutor_students"
             }
           }
         ],
@@ -300,15 +300,15 @@
   },
   "active": "1598087b7e5a9801",
   "lastOpenFiles": [
-    "08_student_courses.md",
+    "00_program.md",
+    "02_tutor_students.md",
+    "01_tutor_dashboard.md",
+    "03_tutor_calendar.md",
     "changelog.md",
+    "08_student_courses.md",
     "07_student_payments.md",
     "06_student_assignments.md",
     "04_tutor_payments.md",
-    "02_tutor_students.md",
-    "00_program.md",
-    "01_tutor_dashboard.md",
-    "03_tutor_calendar.md",
     "Untitled.md",
     "05_student_dashboard.md",
     "wikilinks.md",
