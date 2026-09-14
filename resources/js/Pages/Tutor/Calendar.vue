@@ -11,6 +11,8 @@ import {
 
 import {
     computed,
+    onMounted,
+    onUnmounted,
     ref,
     watch,
 } from 'vue';
@@ -25,6 +27,12 @@ import '@fullcalendar/vue3/skeleton.css';
 import '@fullcalendar/vue3/themes/classic/theme.css';
 import '@fullcalendar/vue3/themes/classic/palette.css';
 
+/*
+|--------------------------------------------------------------------------
+| Props
+|--------------------------------------------------------------------------
+*/
+
 const props = defineProps({
     lessons: {
         type: Array,
@@ -38,6 +46,25 @@ const props = defineProps({
 });
 
 const page = usePage();
+
+/*
+|--------------------------------------------------------------------------
+| Browser timezone
+|--------------------------------------------------------------------------
+|
+| Береться саме timezone комп'ютера користувача.
+|
+| Examples:
+| Europe/Warsaw
+| Europe/Kyiv
+| America/New_York
+|
+*/
+
+const browserTimeZone =
+    Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone || 'UTC';
 
 /*
 |--------------------------------------------------------------------------
@@ -99,7 +126,7 @@ const formatLessonTime = (value) => {
 
 /*
 |--------------------------------------------------------------------------
-| Add lesson
+| Add lesson form
 |--------------------------------------------------------------------------
 */
 
@@ -111,7 +138,14 @@ const lessonForm = useForm({
     date: '',
     start_time: '',
     end_time: '',
+    timezone: browserTimeZone,
 });
+
+/*
+|--------------------------------------------------------------------------
+| Student / subject
+|--------------------------------------------------------------------------
+*/
 
 const selectedStudent = computed(() => {
     return props.students.find(
@@ -137,6 +171,12 @@ watch(
     }
 );
 
+/*
+|--------------------------------------------------------------------------
+| Open lesson form
+|--------------------------------------------------------------------------
+*/
+
 const openLessonModal = (
     startDate = null,
     endDate = null
@@ -145,6 +185,10 @@ const openLessonModal = (
         ? new Date(startDate)
         : new Date();
 
+    /*
+     * Коли натискаємо Add lesson,
+     * беремо найближчу наступну повну годину.
+     */
     if (!startDate) {
         start.setSeconds(0, 0);
         start.setMinutes(0);
@@ -161,12 +205,25 @@ const openLessonModal = (
 
     lessonForm.student_id = '';
     lessonForm.subject = '';
+
     lessonForm.date =
         formatDateInput(start);
+
     lessonForm.start_time =
         formatTimeInput(start);
+
     lessonForm.end_time =
         formatTimeInput(end);
+
+    /*
+     * Беремо timezone ще раз.
+     * Якщо користувач змінив timezone ОС
+     * під час роботи, отримаємо актуальний.
+     */
+    lessonForm.timezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone || 'UTC';
 
     showLessonModal.value = true;
 };
@@ -179,8 +236,20 @@ const closeLessonModal = () => {
     showLessonModal.value = false;
 
     lessonForm.reset();
+
+    lessonForm.timezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone || 'UTC';
+
     lessonForm.clearErrors();
 };
+
+/*
+|--------------------------------------------------------------------------
+| Submit
+|--------------------------------------------------------------------------
+*/
 
 const submitLesson = () => {
     if (lessonForm.processing) {
@@ -196,6 +265,12 @@ const submitLesson = () => {
                 showLessonModal.value = false;
 
                 lessonForm.reset();
+
+                lessonForm.timezone =
+                    Intl.DateTimeFormat()
+                        .resolvedOptions()
+                        .timeZone || 'UTC';
+
                 lessonForm.clearErrors();
             },
         }
@@ -204,13 +279,17 @@ const submitLesson = () => {
 
 /*
 |--------------------------------------------------------------------------
-| Calendar slots
+| Calendar slot interaction
 |--------------------------------------------------------------------------
 */
 
 const handleDateClick = (info) => {
     const start = new Date(info.date);
 
+    /*
+     * Month view doesn't provide a specific hour.
+     * Use 09:00 as default.
+     */
     if (info.allDay) {
         start.setHours(9, 0, 0, 0);
     }
@@ -219,7 +298,10 @@ const handleDateClick = (info) => {
         start.getTime() + 60 * 60 * 1000
     );
 
-    openLessonModal(start, end);
+    openLessonModal(
+        start,
+        end
+    );
 };
 
 const handleSelect = (info) => {
@@ -236,6 +318,7 @@ const handleSelect = (info) => {
 */
 
 const showLessonDetailsModal = ref(false);
+
 const selectedLesson = ref(null);
 
 const lessonActionProcessing = ref(false);
@@ -252,6 +335,7 @@ const openLessonDetails = (info) => {
     }
 
     selectedLesson.value = lesson;
+
     showLessonDetailsModal.value = true;
 };
 
@@ -261,6 +345,7 @@ const closeLessonDetails = () => {
     }
 
     showLessonDetailsModal.value = false;
+
     selectedLesson.value = null;
 };
 
@@ -384,12 +469,36 @@ const deleteLesson = () => {
 
 /*
 |--------------------------------------------------------------------------
+| Lesson colours
+|--------------------------------------------------------------------------
+*/
+
+const getLessonColor = (status) => {
+    if (status === 'completed') {
+        return '#10b981';
+    }
+
+    if (status === 'cancelled') {
+        return '#94a3b8';
+    }
+
+    /*
+     * scheduled
+     */
+    return '#7c3aed';
+};
+
+/*
+|--------------------------------------------------------------------------
 | Calendar events
 |--------------------------------------------------------------------------
 */
 
 const calendarEvents = computed(() => {
     return props.lessons.map((lesson) => {
+        const color =
+            getLessonColor(lesson.status);
+
         return {
             id: String(lesson.id),
 
@@ -398,11 +507,18 @@ const calendarEvents = computed(() => {
                 : lesson.student_name,
 
             start: lesson.start_time,
+
             end: lesson.end_time,
 
-            classNames: [
-                `lesson-${lesson.status}`,
-            ],
+            /*
+             * FullCalendar v7 official
+             * per-event styling.
+             */
+            color,
+
+            contrastColor: '#ffffff',
+
+            display: 'block',
 
             extendedProps: {
                 studentId:
@@ -423,7 +539,7 @@ const calendarEvents = computed(() => {
 
 /*
 |--------------------------------------------------------------------------
-| Statistics
+| Today stats
 |--------------------------------------------------------------------------
 */
 
@@ -447,6 +563,12 @@ const todayCount = computed(() => {
     }).length;
 });
 
+/*
+|--------------------------------------------------------------------------
+| Week stats
+|--------------------------------------------------------------------------
+*/
+
 const weekCount = computed(() => {
     const now = new Date();
 
@@ -461,7 +583,12 @@ const weekCount = computed(() => {
         start.getDate() - day + 1
     );
 
-    start.setHours(0, 0, 0, 0);
+    start.setHours(
+        0,
+        0,
+        0,
+        0
+    );
 
     const end = new Date(start);
 
@@ -486,6 +613,12 @@ const weekCount = computed(() => {
         );
     }).length;
 });
+
+/*
+|--------------------------------------------------------------------------
+| Completed stats
+|--------------------------------------------------------------------------
+*/
 
 const completedCount = computed(() => {
     const now = new Date();
@@ -512,6 +645,41 @@ const completedCount = computed(() => {
 
 /*
 |--------------------------------------------------------------------------
+| Automatic status refresh
+|--------------------------------------------------------------------------
+|
+| Кожну хвилину оновлюємо тільки lessons.
+|
+| Backend при index() перевіряє end_time і автоматично
+| переводить scheduled -> completed.
+|
+*/
+
+let lessonRefreshTimer = null;
+
+onMounted(() => {
+    lessonRefreshTimer = window.setInterval(
+        () => {
+            router.reload({
+                only: ['lessons'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        },
+        60 * 1000
+    );
+});
+
+onUnmounted(() => {
+    if (lessonRefreshTimer) {
+        window.clearInterval(
+            lessonRefreshTimer
+        );
+    }
+});
+
+/*
+|--------------------------------------------------------------------------
 | FullCalendar
 |--------------------------------------------------------------------------
 */
@@ -523,6 +691,13 @@ const calendarOptions = computed(() => ({
         timeGridPlugin,
         interactionPlugin,
     ],
+
+    /*
+     * IMPORTANT:
+     *
+     * Browser/computer timezone.
+     */
+    timeZone: 'local',
 
     initialView: 'timeGridWeek',
 
@@ -549,28 +724,40 @@ const calendarOptions = computed(() => ({
     firstDay: 1,
 
     height: 'auto',
+
     expandRows: true,
 
     nowIndicator: true,
 
     selectable: true,
+
     selectMirror: true,
 
     allDaySlot: false,
 
     slotMinTime: '07:00:00',
+
     slotMaxTime: '22:00:00',
 
     slotDuration: '00:30:00',
+
     slotLabelInterval: '01:00:00',
 
     weekends: true,
 
-    dateClick: handleDateClick,
-    select: handleSelect,
-    eventClick: openLessonDetails,
+    eventDisplay: 'block',
 
-    events: calendarEvents.value,
+    dateClick:
+        handleDateClick,
+
+    select:
+        handleSelect,
+
+    eventClick:
+        openLessonDetails,
+
+    events:
+        calendarEvents.value,
 
     toolbarClass:
         'tutorly-calendar-toolbar',
@@ -593,7 +780,7 @@ const calendarOptions = computed(() => ({
         <div
             class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
         >
-            <!-- Heading -->
+            <!-- Page heading -->
             <div
                 class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
             >
@@ -742,6 +929,7 @@ const calendarOptions = computed(() => ({
                         </p>
                     </div>
 
+                    <!-- Legend -->
                     <div
                         class="flex flex-wrap items-center gap-4 text-xs text-slate-500"
                     >
@@ -1002,6 +1190,7 @@ const calendarOptions = computed(() => ({
                         </div>
                     </div>
 
+                    <!-- Status -->
                     <div
                         class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
                     >
@@ -1027,6 +1216,7 @@ const calendarOptions = computed(() => ({
                         </span>
                     </div>
 
+                    <!-- Actions -->
                     <div
                         class="flex justify-end gap-3 border-t border-slate-100 pt-5"
                     >
@@ -1051,6 +1241,13 @@ const calendarOptions = computed(() => ({
                             }}
                         </button>
                     </div>
+
+                    <p
+                        class="text-xs text-slate-400"
+                    >
+                        Timezone:
+                        {{ browserTimeZone }}
+                    </p>
                 </form>
             </div>
         </Modal>
@@ -1311,40 +1508,6 @@ const calendarOptions = computed(() => ({
 
 .calendar-wrapper [aria-current='date'] {
     font-weight: 600;
-}
-
-/*
-|--------------------------------------------------------------------------
-| Lesson colours
-|--------------------------------------------------------------------------
-*/
-
-/* Scheduled = violet */
-.calendar-wrapper .fc-event.lesson-scheduled {
-    background: #7c3aed !important;
-    border-color: #7c3aed !important;
-    color: #ffffff !important;
-}
-
-/* Completed = green */
-.calendar-wrapper .fc-event.lesson-completed {
-    background: #10b981 !important;
-    border-color: #10b981 !important;
-    color: #ffffff !important;
-}
-
-/* Cancelled = grey */
-.calendar-wrapper .fc-event.lesson-cancelled {
-    background: #94a3b8 !important;
-    border-color: #94a3b8 !important;
-    color: #ffffff !important;
-    opacity: 0.8;
-}
-
-.calendar-wrapper .fc-event.lesson-scheduled .fc-event-main,
-.calendar-wrapper .fc-event.lesson-completed .fc-event-main,
-.calendar-wrapper .fc-event.lesson-cancelled .fc-event-main {
-    color: #ffffff !important;
 }
 
 .calendar-wrapper .fc-event {

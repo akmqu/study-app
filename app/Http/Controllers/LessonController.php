@@ -23,8 +23,9 @@ class LessonController extends Controller
         | Automatically complete past lessons
         |--------------------------------------------------------------------------
         |
-        | Only scheduled lessons whose end time has already passed
-        | become completed.
+        | Lessons are stored in UTC.
+        | Therefore comparing them with now() is safe regardless
+        | of the tutor's local timezone.
         |
         */
 
@@ -94,16 +95,26 @@ class LessonController extends Controller
                     'subject' =>
                         $lesson->tutorStudent->subject,
 
+                    /*
+                     * Laravel timezone is UTC.
+                     *
+                     * ISO strings therefore contain +00:00 and the browser
+                     * can safely display them in the computer's timezone.
+                     */
                     'start_time' =>
-                        $lesson->start_time?->toIso8601String(),
+                        $lesson->start_time
+                            ?->utc()
+                            ->toIso8601String(),
 
                     'end_time' =>
-                        $lesson->end_time?->toIso8601String(),
+                        $lesson->end_time
+                            ?->utc()
+                            ->toIso8601String(),
 
-                    'status' =>
-                        $lesson->status,
+                    'status' => $lesson->status,
                 ];
-            });
+            })
+            ->values();
 
         return Inertia::render('Tutor/Calendar', [
             'lessons' => $lessons,
@@ -141,7 +152,24 @@ class LessonController extends Controller
                 'required',
                 'date_format:H:i',
             ],
+
+            /*
+             * Example:
+             * Europe/Warsaw
+             * Europe/Kyiv
+             * America/New_York
+             */
+            'timezone' => [
+                'required',
+                'timezone',
+            ],
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Verify tutor/student/subject relation
+        |--------------------------------------------------------------------------
+        */
 
         $tutorStudent = TutorStudent::query()
             ->where('tutor_id', $tutor->id)
@@ -162,19 +190,46 @@ class LessonController extends Controller
             ]);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Convert browser local time -> UTC
+        |--------------------------------------------------------------------------
+        |
+        | Example:
+        |
+        | Browser:
+        | Europe/Warsaw
+        | 14:00
+        |
+        | During UTC+2:
+        | stored as 12:00 UTC
+        |
+        | FullCalendar converts 12:00 UTC back to 14:00
+        | for that user's computer.
+        |
+        */
+
         $startTime = Carbon::createFromFormat(
-            'Y-m-d H:i',
+            '!Y-m-d H:i',
             $validated['date']
                 . ' '
-                . $validated['start_time']
-        );
+                . $validated['start_time'],
+            $validated['timezone']
+        )->utc();
 
         $endTime = Carbon::createFromFormat(
-            'Y-m-d H:i',
+            '!Y-m-d H:i',
             $validated['date']
                 . ' '
-                . $validated['end_time']
-        );
+                . $validated['end_time'],
+            $validated['timezone']
+        )->utc();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate duration
+        |--------------------------------------------------------------------------
+        */
 
         if ($endTime->lessThanOrEqualTo($startTime)) {
             throw ValidationException::withMessages([
@@ -182,6 +237,12 @@ class LessonController extends Controller
                     'End time must be after start time.',
             ]);
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create lesson
+        |--------------------------------------------------------------------------
+        */
 
         Lesson::create([
             'tutor_student_id' => $tutorStudent->id,
