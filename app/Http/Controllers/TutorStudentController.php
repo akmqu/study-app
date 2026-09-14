@@ -21,7 +21,11 @@ class TutorStudentController extends Controller
         $students = $tutor
             ->students()
             ->orderBy('name')
-            ->get(['users.id', 'users.name', 'users.email'])
+            ->get([
+                'users.id',
+                'users.name',
+                'users.email',
+            ])
             ->map(fn ($student) => [
                 'id' => $student->id,
                 'name' => $student->name,
@@ -69,7 +73,8 @@ class TutorStudentController extends Controller
                 'name' => $student->name,
                 'email' => $student->email,
             ],
-            'privateNotes' => $tutorStudent->pivot?->private_notes ?? '',
+            'privateNotes' =>
+                $tutorStudent->pivot?->private_notes ?? '',
         ]);
     }
 
@@ -89,12 +94,22 @@ class TutorStudentController extends Controller
         }
 
         $validated = $request->validate([
-            'private_notes' => ['nullable', 'string', 'max:10000'],
+            'private_notes' => [
+                'nullable',
+                'string',
+                'max:10000',
+            ],
         ]);
 
-        $tutor->students()->updateExistingPivot($student->id, [
-            'private_notes' => $validated['private_notes'] ?? null,
-        ]);
+        $tutor
+            ->students()
+            ->updateExistingPivot(
+                $student->id,
+                [
+                    'private_notes' =>
+                        $validated['private_notes'] ?? null,
+                ]
+            );
 
         return back()->with(
             'success',
@@ -107,16 +122,29 @@ class TutorStudentController extends Controller
     ): RedirectResponse {
         $tutor = $request->user();
 
-        $invitation = $tutor->invitations()->create([
-            'code' => Invitation::generateUniqueCode(),
-            'student_name' => $request->validated('student_name'),
-            'subject' => $request->validated('subject'),
-            'price' => $request->validated('price'),
-            'status' => Invitation::STATUS_PENDING,
-            'expires_at' => now()->addDays(
-                Invitation::DEFAULT_EXPIRY_DAYS
-            ),
-        ]);
+        $invitation = $tutor
+            ->invitations()
+            ->create([
+                'code' =>
+                    Invitation::generateUniqueCode(),
+
+                'student_name' =>
+                    $request->validated('student_name'),
+
+                'subject' =>
+                    $request->validated('subject'),
+
+                'price' =>
+                    $request->validated('price'),
+
+                'status' =>
+                    Invitation::STATUS_PENDING,
+
+                'expires_at' =>
+                    now()->addDays(
+                        Invitation::DEFAULT_EXPIRY_DAYS
+                    ),
+            ]);
 
         return redirect()
             ->route('tutor.students')
@@ -124,7 +152,10 @@ class TutorStudentController extends Controller
                 'success',
                 "Invitation code {$invitation->code} generated."
             )
-            ->with('generated_code', $invitation->code);
+            ->with(
+                'generated_code',
+                $invitation->code
+            );
     }
 
     public function destroyInvitation(
@@ -138,24 +169,32 @@ class TutorStudentController extends Controller
 
         if (! $invitation->isPending()) {
             throw ValidationException::withMessages([
-                'invitation' => 'Only unused invitation codes can be deleted.',
+                'invitation' =>
+                    'Only unused invitation codes can be deleted.',
             ]);
         }
 
         $invitation->update([
-            'status' => Invitation::STATUS_REVOKED,
+            'status' =>
+                Invitation::STATUS_REVOKED,
         ]);
 
         return redirect()
             ->route('tutor.students')
-            ->with('success', 'Invitation code deleted.');
+            ->with(
+                'success',
+                'Invitation code deleted.'
+            );
     }
 
-    public function destroy(User $student): RedirectResponse
-    {
+    public function destroy(
+        User $student
+    ): RedirectResponse {
         $tutor = Auth::user();
 
-        $detached = $tutor->students()->detach($student->id);
+        $detached = $tutor
+            ->students()
+            ->detach($student->id);
 
         if ($detached === 0) {
             abort(404);
@@ -163,6 +202,9 @@ class TutorStudentController extends Controller
 
         return redirect()
             ->route('tutor.students')
-            ->with('success', 'Student unlinked successfully.');
+            ->with(
+                'success',
+                'Student unlinked successfully.'
+            );
     }
 }

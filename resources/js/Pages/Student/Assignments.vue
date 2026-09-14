@@ -31,26 +31,39 @@ const filters = [
     },
 ];
 
-const todoCount = computed(() =>
-    props.assignments.filter(
+/*
+|--------------------------------------------------------------------------
+| Counts
+|--------------------------------------------------------------------------
+*/
+
+const todoCount = computed(() => {
+    return props.assignments.filter(
         (assignment) =>
             assignment.status === 'todo'
-    ).length
-);
+    ).length;
+});
 
-const awaitingCount = computed(() =>
-    props.assignments.filter(
+const awaitingCount = computed(() => {
+    return props.assignments.filter(
         (assignment) =>
-            assignment.status === 'awaiting_review'
-    ).length
-);
+            assignment.status ===
+            'awaiting_review'
+    ).length;
+});
 
-const gradedCount = computed(() =>
-    props.assignments.filter(
+const gradedCount = computed(() => {
+    return props.assignments.filter(
         (assignment) =>
             assignment.status === 'graded'
-    ).length
-);
+    ).length;
+});
+
+/*
+|--------------------------------------------------------------------------
+| Filters
+|--------------------------------------------------------------------------
+*/
 
 const filteredAssignments = computed(() => {
     if (activeFilter.value === 'all') {
@@ -59,9 +72,16 @@ const filteredAssignments = computed(() => {
 
     return props.assignments.filter(
         (assignment) =>
-            assignment.status === activeFilter.value
+            assignment.status ===
+            activeFilter.value
     );
 });
+
+/*
+|--------------------------------------------------------------------------
+| Status helpers
+|--------------------------------------------------------------------------
+*/
 
 const statusLabel = (status) => {
     if (status === 'awaiting_review') {
@@ -77,29 +97,72 @@ const statusLabel = (status) => {
 
 const statusClasses = (status) => {
     if (status === 'graded') {
-        return 'bg-emerald-50 text-emerald-700';
+        return [
+            'bg-emerald-50',
+            'text-emerald-700',
+        ];
     }
 
     if (status === 'awaiting_review') {
-        return 'bg-amber-50 text-amber-700';
+        return [
+            'bg-amber-50',
+            'text-amber-700',
+        ];
     }
 
-    return 'bg-indigo-50 text-indigo-700';
+    return [
+        'bg-indigo-50',
+        'text-indigo-700',
+    ];
 };
+
+/*
+|--------------------------------------------------------------------------
+| Dates
+|--------------------------------------------------------------------------
+*/
 
 const formatDate = (value) => {
     if (!value) {
         return 'No deadline';
     }
 
-    return new Date(value).toLocaleDateString(
+    return new Intl.DateTimeFormat(
         undefined,
         {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
         }
+    ).format(
+        new Date(value)
     );
+};
+
+const isOverdue = (assignment) => {
+    if (
+        assignment.status !== 'todo' ||
+        !assignment.deadline
+    ) {
+        return false;
+    }
+
+    return (
+        new Date(assignment.deadline) <
+        new Date()
+    );
+};
+
+/*
+|--------------------------------------------------------------------------
+| File helper
+|--------------------------------------------------------------------------
+*/
+
+const attachmentLabel = (attachment) => {
+    return attachment.name || 'Attachment';
 };
 </script>
 
@@ -127,8 +190,8 @@ const formatDate = (value) => {
                 <p
                     class="mt-1 text-sm text-slate-500"
                 >
-                    View homework, deadlines, submissions
-                    and tutor feedback.
+                    View homework, deadlines,
+                    submissions and tutor feedback.
                 </p>
             </div>
 
@@ -136,7 +199,7 @@ const formatDate = (value) => {
             <div
                 class="grid gap-4 sm:grid-cols-3"
             >
-                <!-- To do -->
+                <!-- Todo -->
                 <div
                     class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
@@ -181,7 +244,7 @@ const formatDate = (value) => {
                     </p>
                 </div>
 
-                <!-- Waiting -->
+                <!-- Awaiting review -->
                 <div
                     class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
@@ -273,7 +336,7 @@ const formatDate = (value) => {
                 </div>
             </div>
 
-            <!-- Assignment list -->
+            <!-- Assignments -->
             <section
                 class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
@@ -294,8 +357,8 @@ const formatDate = (value) => {
                             <p
                                 class="mt-1 text-sm text-slate-500"
                             >
-                                Keep track of your current
-                                and completed homework.
+                                Homework assigned by your
+                                tutors.
                             </p>
                         </div>
 
@@ -372,7 +435,7 @@ const formatDate = (value) => {
                     </p>
                 </div>
 
-                <!-- Assignment cards -->
+                <!-- Assignment list -->
                 <div
                     v-else
                     class="divide-y divide-slate-100"
@@ -389,6 +452,7 @@ const formatDate = (value) => {
                             <div
                                 class="min-w-0 flex-1"
                             >
+                                <!-- Badges -->
                                 <div
                                     class="flex flex-wrap items-center gap-2"
                                 >
@@ -420,10 +484,21 @@ const formatDate = (value) => {
 
                                     <span
                                         v-if="
+                                            isOverdue(
+                                                assignment
+                                            )
+                                        "
+                                        class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700"
+                                    >
+                                        Overdue
+                                    </span>
+
+                                    <span
+                                        v-if="
                                             assignment.grade !==
-                                            null &&
+                                                null &&
                                             assignment.grade !==
-                                            undefined
+                                                undefined
                                         "
                                         class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
                                     >
@@ -434,6 +509,7 @@ const formatDate = (value) => {
                                     </span>
                                 </div>
 
+                                <!-- Title -->
                                 <h3
                                     class="mt-3 text-base font-semibold text-slate-900"
                                 >
@@ -442,16 +518,96 @@ const formatDate = (value) => {
                                     }}
                                 </h3>
 
+                                <!-- Tutor -->
+                                <p
+                                    v-if="
+                                        assignment.tutor
+                                            ?.name
+                                    "
+                                    class="mt-1 text-sm text-slate-400"
+                                >
+                                    From
+                                    <span
+                                        class="font-medium text-slate-600"
+                                    >
+                                        {{
+                                            assignment
+                                                .tutor
+                                                .name
+                                        }}
+                                    </span>
+                                </p>
+
+                                <!-- Instructions -->
                                 <p
                                     v-if="
                                         assignment.instructions
                                     "
-                                    class="mt-2 max-w-2xl text-sm leading-6 text-slate-500"
+                                    class="mt-3 max-w-3xl whitespace-pre-line text-sm leading-6 text-slate-500"
                                 >
                                     {{
                                         assignment.instructions
                                     }}
                                 </p>
+
+                                <!-- Attachments -->
+                                <div
+                                    v-if="
+                                        assignment
+                                            .attachments
+                                            ?.length
+                                    "
+                                    class="mt-4"
+                                >
+                                    <p
+                                        class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400"
+                                    >
+                                        Attachments
+                                    </p>
+
+                                    <div
+                                        class="flex flex-wrap gap-2"
+                                    >
+                                        <a
+                                            v-for="attachment in assignment.attachments"
+                                            :key="
+                                                attachment.id ??
+                                                attachment.url
+                                            "
+                                            :href="
+                                                attachment.url
+                                            "
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="h-4 w-4"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+                                                />
+                                            </svg>
+
+                                            <span
+                                                class="max-w-64 truncate"
+                                            >
+                                                {{
+                                                    attachmentLabel(
+                                                        attachment
+                                                    )
+                                                }}
+                                            </span>
+                                        </a>
+                                    </div>
+                                </div>
 
                                 <!-- Feedback -->
                                 <div
@@ -467,7 +623,7 @@ const formatDate = (value) => {
                                     </p>
 
                                     <p
-                                        class="mt-1 text-sm text-indigo-900"
+                                        class="mt-1 whitespace-pre-line text-sm text-indigo-900"
                                     >
                                         {{
                                             assignment.feedback
@@ -477,7 +633,14 @@ const formatDate = (value) => {
 
                                 <!-- Deadline -->
                                 <div
-                                    class="mt-4 flex items-center gap-2 text-xs text-slate-400"
+                                    class="mt-4 flex items-center gap-2 text-xs"
+                                    :class="
+                                        isOverdue(
+                                            assignment
+                                        )
+                                            ? 'text-red-600'
+                                            : 'text-slate-400'
+                                    "
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -501,26 +664,31 @@ const formatDate = (value) => {
                                         />
                                     </svg>
 
-                                    Due
-                                    {{
-                                        formatDate(
-                                            assignment.deadline
-                                        )
-                                    }}
+                                    <span>
+                                        Due
+                                        {{
+                                            formatDate(
+                                                assignment.deadline
+                                            )
+                                        }}
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Future action -->
+                            <!-- Status/action -->
                             <div
                                 class="shrink-0"
                             >
+                                <!-- Submission comes next -->
                                 <button
                                     v-if="
                                         assignment.status ===
                                         'todo'
                                     "
                                     type="button"
-                                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+                                    disabled
+                                    class="cursor-not-allowed rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white opacity-50"
+                                    title="Submission upload will be connected next"
                                 >
                                     Submit work
                                 </button>
