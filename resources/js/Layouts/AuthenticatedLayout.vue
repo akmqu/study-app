@@ -44,6 +44,11 @@ const navigation = computed(() => {
                 route: 'tutor.students',
                 active: 'tutor.students*',
             },
+                    {
+            label: 'Calendar',
+            route: 'tutor.calendar',
+            active: 'tutor.calendar*',
+        },
         ];
     }
 
@@ -58,6 +63,7 @@ const navigation = computed(() => {
             route: 'student.assignments',
             active: 'student.assignments*',
         },
+
     ];
 });
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TutorController;
@@ -36,6 +37,24 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
     Route::get('/dashboard', [TutorController::class, 'dashboard'])
         ->name('tutor.dashboard');
+
+    Route::get('/calendar', [LessonController::class, 'index'])
+    ->name('tutor.calendar');
+
+    Route::post('/lessons', [LessonController::class, 'store'])
+    ->name('tutor.lessons.store');
+
+    Route::patch('/lessons/{lesson}/complete', [LessonController::class, 'complete'])
+    ->whereNumber('lesson')
+    ->name('tutor.lessons.complete');
+
+    Route::patch('/lessons/{lesson}/cancel', [LessonController::class, 'cancel'])
+    ->whereNumber('lesson')
+    ->name('tutor.lessons.cancel');
+
+    Route::delete('/lessons/{lesson}', [LessonController::class, 'destroy'])
+    ->whereNumber('lesson')
+    ->name('tutor.lessons.destroy');
 
     Route::post('/assignments', [TutorController::class, 'storeAssignment'])
         ->name('tutor.assignments.store');
