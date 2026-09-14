@@ -31,18 +31,27 @@ class Assignment extends Model
 
     public function attachments(): HasMany
     {
-        return $this->hasMany(AssignmentAttachment::class);
+        return $this->hasMany(
+            AssignmentAttachment::class,
+            'assignment_id'
+        );
     }
 
     public function submissions(): HasMany
     {
-        return $this->hasMany(Submission::class);
+        return $this->hasMany(
+            Submission::class,
+            'assignment_id'
+        );
     }
 
     public function latestSubmission(): HasOne
     {
         return $this
-            ->hasOne(Submission::class)
+            ->hasOne(
+                Submission::class,
+                'assignment_id'
+            )
             ->latestOfMany();
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
@@ -83,6 +84,12 @@ Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
 });
 
 Route::middleware(['auth', 'role:student'])->prefix('student')->group(function () {
+    Route::get(
+    '/assignment-attachments/{attachment}',
+    [AssignmentAttachmentController::class, 'show']
+)
+    ->whereNumber('attachment')
+    ->name('assignment.attachments.show');
     Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
     Route::post('/invitations/redeem', [StudentController::class, 'redeemInvitation'])->name('student.invitations.redeem');
     Route::get('/assignments', [StudentController::class, 'assignments'])->name('student.assignments');

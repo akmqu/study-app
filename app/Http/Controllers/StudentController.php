@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,12 +18,6 @@ class StudentController extends Controller
     public function dashboard(): Response
     {
         $student = auth()->user();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Tutors
-        |--------------------------------------------------------------------------
-        */
 
         $tutors = $student
             ->tutors()
@@ -38,78 +31,70 @@ class StudentController extends Controller
                 'id' => $tutor->id,
                 'name' => $tutor->name,
                 'email' => $tutor->email,
-                'subject' => $tutor->pivot?->subject,
+                'subject' =>
+                    $tutor->pivot?->subject,
             ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Upcoming assignments
-        |--------------------------------------------------------------------------
-        |
-        | Assignment is considered upcoming when:
-        |
-        | - it belongs to this student
-        | - there is no submission yet
-        | - deadline is in the future OR there is no deadline
-        |
-        */
-
-        $upcomingAssignments = Assignment::query()
-            ->whereHas(
-                'tutorStudent',
-                fn ($query) => $query->where(
-                    'student_id',
-                    $student->id
+        $upcomingAssignments =
+            Assignment::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'student_id',
+                            $student->id
+                        )
                 )
-            )
-            ->whereDoesntHave('submissions')
-            ->where(function ($query) {
-                $query
-                    ->whereNull('deadline')
-                    ->orWhere(
-                        'deadline',
-                        '>=',
-                        now()
-                    );
-            })
-            ->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Assignments awaiting tutor review
-        |--------------------------------------------------------------------------
-        */
-
-        $pendingReviews = Assignment::query()
-            ->whereHas(
-                'tutorStudent',
-                fn ($query) => $query->where(
-                    'student_id',
-                    $student->id
+                ->whereDoesntHave(
+                    'submissions'
                 )
-            )
-            ->whereHas(
-                'latestSubmission',
-                fn ($query) => $query->where(
-                    'status',
-                    'awaiting_review'
+                ->where(function ($query) {
+                    $query
+                        ->whereNull('deadline')
+                        ->orWhere(
+                            'deadline',
+                            '>=',
+                            now()
+                        );
+                })
+                ->count();
+
+        $pendingReviews =
+            Assignment::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'student_id',
+                            $student->id
+                        )
                 )
-            )
-            ->count();
+                ->whereHas(
+                    'latestSubmission',
+                    fn ($query) =>
+                        $query->where(
+                            'status',
+                            'awaiting_review'
+                        )
+                )
+                ->count();
 
-        return Inertia::render('Student/Dashboard', [
-            'upcomingAssignments' =>
-                $upcomingAssignments,
+        return Inertia::render(
+            'Student/Dashboard',
+            [
+                'upcomingAssignments' =>
+                    $upcomingAssignments,
 
-            'paymentStatus' =>
-                'Pending',
+                'paymentStatus' =>
+                    'Pending',
 
-            'pendingReviews' =>
-                $pendingReviews,
+                'pendingReviews' =>
+                    $pendingReviews,
 
-            'tutors' =>
-                $tutors,
-        ]);
+                'tutors' =>
+                    $tutors,
+            ]
+        );
     }
 
     public function redeemInvitation(
@@ -126,19 +111,19 @@ class StudentController extends Controller
             $student,
             $normalizedCode
         ): void {
-            $invitation = Invitation::query()
-                ->whereRaw(
-                    'UPPER(TRIM(code)) = ?',
-                    [$normalizedCode]
-                )
-                ->lockForUpdate()
-                ->first();
+            $invitation =
+                Invitation::query()
+                    ->whereRaw(
+                        'UPPER(TRIM(code)) = ?',
+                        [$normalizedCode]
+                    )
+                    ->lockForUpdate()
+                    ->first();
 
             if (
-                ! $invitation ||
-                ! $invitation->isAcceptableBy(
-                    $student
-                )
+                ! $invitation
+                || ! $invitation
+                    ->isAcceptableBy($student)
             ) {
                 throw ValidationException::withMessages([
                     'code' =>
@@ -146,15 +131,16 @@ class StudentController extends Controller
                 ]);
             }
 
-            $tutorIsValid = User::query()
-                ->whereKey(
-                    $invitation->tutor_id
-                )
-                ->where(
-                    'role',
-                    'tutor'
-                )
-                ->exists();
+            $tutorIsValid =
+                User::query()
+                    ->whereKey(
+                        $invitation->tutor_id
+                    )
+                    ->where(
+                        'role',
+                        'tutor'
+                    )
+                    ->exists();
 
             if (! $tutorIsValid) {
                 throw ValidationException::withMessages([
@@ -180,10 +166,7 @@ class StudentController extends Controller
             } catch (
                 UniqueConstraintViolationException
             ) {
-                /*
-                 * Relationship already exists.
-                 * Invitation is still accepted once.
-                 */
+                // Relationship already exists.
             }
         });
 
@@ -199,166 +182,149 @@ class StudentController extends Controller
     {
         $student = auth()->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Get real assignments for current student
-        |--------------------------------------------------------------------------
-        */
-
-        $assignments = Assignment::query()
-            ->whereHas(
-                'tutorStudent',
-                fn ($query) => $query->where(
-                    'student_id',
-                    $student->id
+        $assignments =
+            Assignment::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'student_id',
+                            $student->id
+                        )
                 )
-            )
-            ->with([
-                'tutorStudent.tutor:id,name,email',
-                'attachments',
-                'latestSubmission',
-            ])
-            ->orderByRaw(
-                'CASE WHEN deadline IS NULL THEN 1 ELSE 0 END'
-            )
-            ->orderBy('deadline')
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function (Assignment $assignment) {
-                $submission =
-                    $assignment->latestSubmission;
+                ->with([
+                    'tutorStudent.tutor:id,name,email',
+                    'attachments',
+                    'latestSubmission',
+                ])
+                ->orderByRaw(
+                    'CASE WHEN deadline IS NULL THEN 1 ELSE 0 END'
+                )
+                ->orderBy('deadline')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(
+                    function (
+                        Assignment $assignment
+                    ) {
+                        $submission =
+                            $assignment
+                                ->latestSubmission;
 
-                $status =
-                    $submission?->status ?? 'todo';
+                        $status =
+                            $submission?->status
+                            ?? 'todo';
 
-                /*
-                 * Safety in case another status
-                 * somehow appears in the DB.
-                 */
-                if (
-                    ! in_array(
-                        $status,
-                        [
-                            'todo',
-                            'awaiting_review',
-                            'graded',
-                        ],
-                        true
-                    )
-                ) {
-                    $status = 'todo';
-                }
+                        if (
+                            ! in_array(
+                                $status,
+                                [
+                                    'todo',
+                                    'awaiting_review',
+                                    'graded',
+                                ],
+                                true
+                            )
+                        ) {
+                            $status = 'todo';
+                        }
 
-                $attachments =
-                    $assignment
-                        ->attachments
-                        ->map(
-                            fn ($attachment) => [
+                        $attachments =
+                            $assignment
+                                ->attachments
+                                ->map(
+                                    fn ($attachment) => [
+                                        'id' =>
+                                            $attachment
+                                                ->id,
+
+                                        'name' =>
+                                            $attachment
+                                                ->original_name,
+
+                                        'mime_type' =>
+                                            $attachment
+                                                ->mime_type,
+
+                                        /*
+                                         * Relative protected URL.
+                                         * No APP_URL/storage problem.
+                                         */
+                                        'url' =>
+                                            route(
+                                                'assignment.attachments.show',
+                                                [
+                                                    'attachment' =>
+                                                        $attachment->id,
+                                                ],
+                                                false
+                                            ),
+                                    ]
+                                )
+                                ->values();
+
+                        return [
+                            'id' =>
+                                $assignment->id,
+
+                            'title' =>
+                                $assignment->title,
+
+                            'instructions' =>
+                                $assignment
+                                    ->instructions,
+
+                            'subject' =>
+                                $assignment
+                                    ->tutorStudent
+                                    ?->subject,
+
+                            'tutor' => [
                                 'id' =>
-                                    $attachment->id,
+                                    $assignment
+                                        ->tutorStudent
+                                        ?->tutor
+                                        ?->id,
 
                                 'name' =>
-                                    $attachment
-                                        ->original_name,
-
-                                'mime_type' =>
-                                    $attachment
-                                        ->mime_type,
-
-                                'url' =>
-                                    Storage::disk(
-                                        'public'
-                                    )->url(
-                                        $attachment
-                                            ->file_path
-                                    ),
-                            ]
-                        )
-                        ->values();
-
-                /*
-                 * Support the old file_path column too,
-                 * in case an old assignment used it.
-                 */
-                if (
-                    $attachments->isEmpty() &&
-                    $assignment->file_path
-                ) {
-                    $attachments->push([
-                        'id' => null,
-
-                        'name' => basename(
-                            $assignment->file_path
-                        ),
-
-                        'mime_type' => null,
-
-                        'url' =>
-                            Storage::disk('public')
-                                ->url(
                                     $assignment
-                                        ->file_path
-                                ),
-                    ]);
-                }
+                                        ->tutorStudent
+                                        ?->tutor
+                                        ?->name,
 
-                return [
-                    'id' =>
-                        $assignment->id,
+                                'email' =>
+                                    $assignment
+                                        ->tutorStudent
+                                        ?->tutor
+                                        ?->email,
+                            ],
 
-                    'title' =>
-                        $assignment->title,
+                            'deadline' =>
+                                $assignment
+                                    ->deadline
+                                    ?->toIso8601String(),
 
-                    'instructions' =>
-                        $assignment->instructions,
+                            'created_at' =>
+                                $assignment
+                                    ->created_at
+                                    ?->toIso8601String(),
 
-                    'subject' =>
-                        $assignment
-                            ->tutorStudent
-                            ?->subject,
+                            'status' =>
+                                $status,
 
-                    'tutor' => [
-                        'id' =>
-                            $assignment
-                                ->tutorStudent
-                                ?->tutor
-                                ?->id,
+                            'grade' =>
+                                $submission?->grade,
 
-                        'name' =>
-                            $assignment
-                                ->tutorStudent
-                                ?->tutor
-                                ?->name,
+                            'feedback' =>
+                                $submission
+                                    ?->feedback,
 
-                        'email' =>
-                            $assignment
-                                ->tutorStudent
-                                ?->tutor
-                                ?->email,
-                    ],
-
-                    'deadline' =>
-                        $assignment->deadline
-                            ?->toIso8601String(),
-
-                    'created_at' =>
-                        $assignment->created_at
-                            ?->toIso8601String(),
-
-                    'status' =>
-                        $status,
-
-                    'grade' =>
-                        $submission?->grade,
-
-                    'feedback' =>
-                        $submission?->feedback,
-
-                    'attachments' =>
-                        $attachments,
-                ];
-            })
-            ->values();
+                            'attachments' =>
+                                $attachments,
+                        ];
+                    }
+                )
+                ->values();
 
         return Inertia::render(
             'Student/Assignments',

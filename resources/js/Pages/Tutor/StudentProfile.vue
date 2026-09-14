@@ -1,7 +1,16 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import {
+    Head,
+    Link,
+    useForm,
+    usePage,
+} from '@inertiajs/vue3';
+
+import {
+    computed,
+    ref,
+} from 'vue';
 
 const props = defineProps({
     student: {
@@ -12,6 +21,16 @@ const props = defineProps({
     privateNotes: {
         type: String,
         default: '',
+    },
+
+    subjects: {
+        type: Array,
+        default: () => [],
+    },
+
+    assignments: {
+        type: Array,
+        default: () => [],
     },
 });
 
@@ -24,12 +43,19 @@ const successMessage = computed(
 const showHomeworkForm = ref(false);
 
 const notesForm = useForm({
-    private_notes: props.privateNotes,
+    private_notes:
+        props.privateNotes,
 });
 
 const homeworkForm = useForm({
-    student_id: props.student.id,
-    subject: '',
+    student_id:
+        props.student.id,
+
+    subject:
+        props.subjects.length === 1
+            ? props.subjects[0]
+            : '',
+
     title: '',
     instructions: '',
     deadline: '',
@@ -37,13 +63,158 @@ const homeworkForm = useForm({
 });
 
 const initials = computed(() => {
-    return String(props.student.name ?? '')
+    return String(
+        props.student.name ?? ''
+    )
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
-        .map((part) => part.charAt(0).toUpperCase())
+        .map(
+            (part) =>
+                part
+                    .charAt(0)
+                    .toUpperCase()
+        )
         .join('');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Assignment stats
+|--------------------------------------------------------------------------
+*/
+
+const todoCount = computed(() => {
+    return props.assignments.filter(
+        (assignment) =>
+            assignment.status === 'todo'
+    ).length;
+});
+
+const awaitingCount = computed(() => {
+    return props.assignments.filter(
+        (assignment) =>
+            assignment.status
+            === 'awaiting_review'
+    ).length;
+});
+
+const gradedCount = computed(() => {
+    return props.assignments.filter(
+        (assignment) =>
+            assignment.status === 'graded'
+    ).length;
+});
+
+const averageGrade = computed(() => {
+    const grades =
+        props.assignments
+            .filter(
+                (assignment) =>
+                    assignment.status
+                        === 'graded'
+                    && assignment.grade
+                        !== null
+                    && assignment.grade
+                        !== undefined
+            )
+            .map(
+                (assignment) =>
+                    Number(
+                        assignment.grade
+                    )
+            )
+            .filter(
+                (grade) =>
+                    Number.isFinite(grade)
+            );
+
+    if (!grades.length) {
+        return 0;
+    }
+
+    return Math.round(
+        grades.reduce(
+            (sum, grade) =>
+                sum + grade,
+            0
+        ) / grades.length
+    );
+});
+
+/*
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
+const formatDate = (value) => {
+    if (!value) {
+        return 'No deadline';
+    }
+
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        }
+    ).format(
+        new Date(value)
+    );
+};
+
+const statusLabel = (status) => {
+    if (
+        status ===
+        'awaiting_review'
+    ) {
+        return 'Awaiting review';
+    }
+
+    if (status === 'graded') {
+        return 'Graded';
+    }
+
+    return 'To do';
+};
+
+const statusClasses = (status) => {
+    if (status === 'graded') {
+        return 'bg-emerald-50 text-emerald-700';
+    }
+
+    if (
+        status ===
+        'awaiting_review'
+    ) {
+        return 'bg-amber-50 text-amber-700';
+    }
+
+    return 'bg-indigo-50 text-indigo-700';
+};
+
+const isOverdue = (assignment) => {
+    if (
+        assignment.status !== 'todo'
+        || !assignment.deadline
+    ) {
+        return false;
+    }
+
+    return (
+        new Date(
+            assignment.deadline
+        ) < new Date()
+    );
+};
+
+/*
+|--------------------------------------------------------------------------
+| Private notes
+|--------------------------------------------------------------------------
+*/
 
 const saveNotes = () => {
     if (notesForm.processing) {
@@ -61,20 +232,29 @@ const saveNotes = () => {
     );
 };
 
+/*
+|--------------------------------------------------------------------------
+| Homework
+|--------------------------------------------------------------------------
+*/
+
 const submitHomework = () => {
-    if (homeworkForm.processing) {
+    if (
+        homeworkForm.processing
+    ) {
         return;
     }
 
     homeworkForm.post(
-        route('tutor.assignments.store'),
+        route(
+            'tutor.assignments.store'
+        ),
         {
             preserveScroll: true,
             forceFormData: true,
 
             onSuccess: () => {
                 homeworkForm.reset(
-                    'subject',
                     'title',
                     'instructions',
                     'deadline',
@@ -90,16 +270,20 @@ const submitHomework = () => {
                     input.value = '';
                 }
 
-                showHomeworkForm.value = false;
+                showHomeworkForm.value =
+                    false;
             },
         }
     );
 };
 
-const handleAttachments = (event) => {
-    homeworkForm.attachments = Array.from(
-        event.target.files ?? []
-    );
+const handleAttachments = (
+    event
+) => {
+    homeworkForm.attachments =
+        Array.from(
+            event.target.files ?? []
+        );
 };
 </script>
 
@@ -110,7 +294,7 @@ const handleAttachments = (event) => {
         <div
             class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
         >
-            <!-- Top back link -->
+            <!-- Back -->
             <div class="mb-5">
                 <Link
                     :href="route('tutor.students')"
@@ -143,7 +327,7 @@ const handleAttachments = (event) => {
                 {{ successMessage }}
             </div>
 
-            <!-- Student header -->
+            <!-- Header -->
             <section
                 class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
@@ -159,7 +343,9 @@ const handleAttachments = (event) => {
                             {{ initials }}
                         </div>
 
-                        <div class="min-w-0 flex-1">
+                        <div
+                            class="min-w-0 flex-1"
+                        >
                             <p
                                 class="text-sm font-medium text-indigo-100"
                             >
@@ -202,19 +388,89 @@ const handleAttachments = (event) => {
                 </div>
             </section>
 
-            <!-- Main content -->
+            <!-- Stats -->
+            <div
+                class="mt-6 grid gap-4 sm:grid-cols-4"
+            >
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        Total homework
+                    </p>
+
+                    <p
+                        class="mt-2 text-2xl font-semibold text-slate-900"
+                    >
+                        {{ assignments.length }}
+                    </p>
+                </div>
+
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        To do
+                    </p>
+
+                    <p
+                        class="mt-2 text-2xl font-semibold text-indigo-600"
+                    >
+                        {{ todoCount }}
+                    </p>
+                </div>
+
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        Awaiting review
+                    </p>
+
+                    <p
+                        class="mt-2 text-2xl font-semibold text-amber-600"
+                    >
+                        {{ awaitingCount }}
+                    </p>
+                </div>
+
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        Graded
+                    </p>
+
+                    <p
+                        class="mt-2 text-2xl font-semibold text-emerald-600"
+                    >
+                        {{ gradedCount }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Main -->
             <div
                 class="mt-6 grid gap-6 lg:grid-cols-5"
             >
-                <!-- Left column -->
-                <div class="space-y-6 lg:col-span-3">
-
+                <!-- Left -->
+                <div
+                    class="space-y-6 lg:col-span-3"
+                >
                     <!-- Progress -->
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
                         <div
-                            class="flex items-start justify-between gap-4"
+                            class="flex items-center justify-between gap-4"
                         >
                             <div>
                                 <h2
@@ -226,79 +482,38 @@ const handleAttachments = (event) => {
                                 <p
                                     class="mt-1 text-sm text-slate-500"
                                 >
-                                    Based on the last 10 graded
-                                    assignments.
+                                    Based on graded assignments.
                                 </p>
                             </div>
 
                             <span
-                                class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"
+                                class="text-xl font-semibold text-slate-900"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    class="h-5 w-5"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M3 3v18h18"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="m7 16 4-5 4 3 5-7"
-                                    />
-                                </svg>
+                                {{ averageGrade }}%
                             </span>
                         </div>
 
-                        <div class="mt-6">
+                        <div
+                            class="mt-5 h-2.5 overflow-hidden rounded-full bg-slate-100"
+                        >
                             <div
-                                class="mb-2 flex items-center justify-between"
-                            >
-                                <span
-                                    class="text-sm text-slate-500"
-                                >
-                                    Average grade
-                                </span>
-
-                                <span
-                                    class="text-lg font-semibold text-slate-900"
-                                >
-                                    0%
-                                </span>
-                            </div>
-
-                            <div
-                                class="h-2.5 overflow-hidden rounded-full bg-slate-100"
-                            >
-                                <div
-                                    class="h-full rounded-full bg-indigo-600"
-                                    style="width: 0%"
-                                ></div>
-                            </div>
-
-                            <div
-                                class="mt-6 flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 text-center"
-                            >
-                                <p
-                                    class="text-sm font-medium text-slate-700"
-                                >
-                                    No graded assignments yet
-                                </p>
-
-                                <p
-                                    class="mt-1 text-xs text-slate-400"
-                                >
-                                    Progress will appear after
-                                    homework is graded.
-                                </p>
-                            </div>
+                                class="h-full rounded-full bg-indigo-600 transition-all"
+                                :style="{
+                                    width:
+                                        `${Math.min(
+                                            averageGrade,
+                                            100
+                                        )}%`,
+                                }"
+                            ></div>
                         </div>
+
+                        <p
+                            v-if="gradedCount === 0"
+                            class="mt-4 text-sm text-slate-400"
+                        >
+                            No graded assignments yet.
+                        </p>
                     </section>
 
                     <!-- Homework -->
@@ -328,37 +543,27 @@ const handleAttachments = (event) => {
                                 type="button"
                                 class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
                                 @click="
-                                    showHomeworkForm = true
+                                    showHomeworkForm =
+                                        true
                                 "
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    class="h-4 w-4"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M12 5v14M5 12h14"
-                                    />
-                                </svg>
+                                <span>+</span>
 
                                 Assign homework
                             </button>
                         </div>
 
-                        <!-- Homework form -->
+                        <!-- Form -->
                         <form
                             v-if="showHomeworkForm"
                             class="mt-6 space-y-4 border-t border-slate-100 pt-5"
-                            @submit.prevent="submitHomework"
+                            @submit.prevent="
+                                submitHomework
+                            "
                         >
                             <div
                                 class="grid gap-4 sm:grid-cols-2"
                             >
-                                <!-- Student -->
                                 <div>
                                     <label
                                         class="mb-1.5 block text-sm font-medium text-slate-700"
@@ -367,14 +572,15 @@ const handleAttachments = (event) => {
                                     </label>
 
                                     <input
-                                        :value="student.name"
-                                        type="text"
+                                        :value="
+                                            student.name
+                                        "
                                         disabled
+                                        type="text"
                                         class="block w-full rounded-lg border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
                                     />
                                 </div>
 
-                                <!-- Subject -->
                                 <div>
                                     <label
                                         for="profile-subject"
@@ -389,62 +595,49 @@ const handleAttachments = (event) => {
                                             homeworkForm.subject
                                         "
                                         required
-                                        class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                        :disabled="
+                                            subjects.length ===
+                                            0
+                                        "
+                                        class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm disabled:opacity-50 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                     >
                                         <option
                                             value=""
                                             disabled
                                         >
-                                            Select subject
+                                            {{
+                                                subjects.length
+                                                    ? 'Select subject'
+                                                    : 'No subject linked'
+                                            }}
                                         </option>
 
                                         <option
-                                            value="Mathematics"
+                                            v-for="subject in subjects"
+                                            :key="subject"
+                                            :value="subject"
                                         >
-                                            Mathematics
-                                        </option>
-
-                                        <option
-                                            value="English"
-                                        >
-                                            English
-                                        </option>
-
-                                        <option
-                                            value="Physics"
-                                        >
-                                            Physics
-                                        </option>
-
-                                        <option
-                                            value="Chemistry"
-                                        >
-                                            Chemistry
-                                        </option>
-
-                                        <option
-                                            value="Biology"
-                                        >
-                                            Biology
+                                            {{ subject }}
                                         </option>
                                     </select>
 
                                     <p
                                         v-if="
-                                            homeworkForm.errors
+                                            homeworkForm
+                                                .errors
                                                 .subject
                                         "
                                         class="mt-1 text-xs text-red-600"
                                     >
                                         {{
-                                            homeworkForm.errors
+                                            homeworkForm
+                                                .errors
                                                 .subject
                                         }}
                                     </p>
                                 </div>
                             </div>
 
-                            <!-- Title -->
                             <div>
                                 <label
                                     for="profile-title"
@@ -461,23 +654,10 @@ const handleAttachments = (event) => {
                                     type="text"
                                     required
                                     placeholder="e.g. Chapter 5 problem set"
-                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 />
-
-                                <p
-                                    v-if="
-                                        homeworkForm.errors.title
-                                    "
-                                    class="mt-1 text-xs text-red-600"
-                                >
-                                    {{
-                                        homeworkForm.errors
-                                            .title
-                                    }}
-                                </p>
                             </div>
 
-                            <!-- Instructions -->
                             <div>
                                 <label
                                     for="profile-instructions"
@@ -493,24 +673,10 @@ const handleAttachments = (event) => {
                                     "
                                     rows="4"
                                     placeholder="Describe what the student needs to complete..."
-                                    class="block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                    class="block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 ></textarea>
-
-                                <p
-                                    v-if="
-                                        homeworkForm.errors
-                                            .instructions
-                                    "
-                                    class="mt-1 text-xs text-red-600"
-                                >
-                                    {{
-                                        homeworkForm.errors
-                                            .instructions
-                                    }}
-                                </p>
                             </div>
 
-                            <!-- Deadline -->
                             <div>
                                 <label
                                     for="profile-deadline"
@@ -527,22 +693,8 @@ const handleAttachments = (event) => {
                                     type="date"
                                     class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 />
-
-                                <p
-                                    v-if="
-                                        homeworkForm.errors
-                                            .deadline
-                                    "
-                                    class="mt-1 text-xs text-red-600"
-                                >
-                                    {{
-                                        homeworkForm.errors
-                                            .deadline
-                                    }}
-                                </p>
                             </div>
 
-                            <!-- Attachments -->
                             <div>
                                 <label
                                     for="profile-attachments"
@@ -556,67 +708,41 @@ const handleAttachments = (event) => {
                                     type="file"
                                     multiple
                                     accept=".pdf,.doc,.docx"
-                                    class="block w-full rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
+                                    class="block w-full rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-white file:px-3 file:py-2 file:text-sm"
                                     @change="
                                         handleAttachments
                                     "
                                 />
 
-                                <p
-                                    class="mt-1 text-xs text-slate-400"
-                                >
-                                    PDF or Word files. Maximum
-                                    10 MB per file.
-                                </p>
-
                                 <div
                                     v-if="
-                                        homeworkForm.attachments
+                                        homeworkForm
+                                            .attachments
                                             .length
                                     "
                                     class="mt-2 space-y-1"
                                 >
                                     <div
                                         v-for="file in homeworkForm.attachments"
-                                        :key="file.name"
-                                        class="flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-xs text-slate-600"
+                                        :key="
+                                            file.name
+                                        "
+                                        class="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600"
                                     >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            class="h-4 w-4 text-slate-400"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
-                                            />
-                                        </svg>
-
-                                        <span
-                                            class="truncate"
-                                        >
-                                            {{ file.name }}
-                                        </span>
+                                        {{ file.name }}
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Buttons -->
                             <div
                                 class="flex justify-end gap-3 border-t border-slate-100 pt-5"
                             >
                                 <button
                                     type="button"
-                                    :disabled="
-                                        homeworkForm.processing
-                                    "
-                                    class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                                    class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
                                     @click="
-                                        showHomeworkForm = false
+                                        showHomeworkForm =
+                                            false
                                     "
                                 >
                                     Cancel
@@ -626,8 +752,10 @@ const handleAttachments = (event) => {
                                     type="submit"
                                     :disabled="
                                         homeworkForm.processing
+                                        || subjects.length
+                                            === 0
                                     "
-                                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                                 >
                                     {{
                                         homeworkForm.processing
@@ -638,147 +766,201 @@ const handleAttachments = (event) => {
                             </div>
                         </form>
 
-                        <!-- Homework list placeholder -->
+                        <!-- Real homework list -->
                         <div
-                            v-if="!showHomeworkForm"
+                            v-if="
+                                assignments.length
+                                === 0
+                            "
                             class="mt-6 flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 px-6 text-center"
-                        >
-                            <span
-                                class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    class="h-5 w-5"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M14 2v6h6"
-                                    />
-                                </svg>
-                            </span>
-
-                            <p
-                                class="mt-3 text-sm font-medium text-slate-700"
-                            >
-                                Homework will appear here
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs text-slate-400"
-                            >
-                                Next we will connect this section
-                                to assignments from the database.
-                            </p>
-                        </div>
-                    </section>
-
-                    <!-- Submissions -->
-                    <section
-                        class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-                    >
-                        <div
-                            class="flex items-start justify-between gap-4"
-                        >
-                            <div>
-                                <h2
-                                    class="font-medium text-slate-900"
-                                >
-                                    Submissions & grading
-                                </h2>
-
-                                <p
-                                    class="mt-1 text-sm text-slate-500"
-                                >
-                                    Review submitted homework,
-                                    feedback and grades.
-                                </p>
-                            </div>
-
-                            <span
-                                class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
-                            >
-                                0 submissions
-                            </span>
-                        </div>
-
-                        <div
-                            class="mt-5 flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 text-center"
                         >
                             <p
                                 class="text-sm font-medium text-slate-700"
                             >
-                                No submissions yet
+                                No homework yet
                             </p>
 
                             <p
                                 class="mt-1 text-xs text-slate-400"
                             >
-                                Student submissions will appear
-                                here.
+                                Assigned homework will
+                                appear here.
                             </p>
+                        </div>
+
+                        <div
+                            v-else
+                            class="mt-6 space-y-3"
+                        >
+                            <article
+                                v-for="assignment in assignments"
+                                :key="
+                                    assignment.id
+                                "
+                                class="rounded-xl border border-slate-200 p-4"
+                            >
+                                <div
+                                    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                                >
+                                    <div
+                                        class="min-w-0 flex-1"
+                                    >
+                                        <div
+                                            class="flex flex-wrap items-center gap-2"
+                                        >
+                                            <span
+                                                v-if="
+                                                    assignment.subject
+                                                "
+                                                class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
+                                            >
+                                                {{
+                                                    assignment.subject
+                                                }}
+                                            </span>
+
+                                            <span
+                                                class="rounded-full px-2.5 py-1 text-xs font-medium"
+                                                :class="
+                                                    statusClasses(
+                                                        assignment.status
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    statusLabel(
+                                                        assignment.status
+                                                    )
+                                                }}
+                                            </span>
+
+                                            <span
+                                                v-if="
+                                                    isOverdue(
+                                                        assignment
+                                                    )
+                                                "
+                                                class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700"
+                                            >
+                                                Overdue
+                                            </span>
+                                        </div>
+
+                                        <h3
+                                            class="mt-3 font-semibold text-slate-900"
+                                        >
+                                            {{
+                                                assignment.title
+                                            }}
+                                        </h3>
+
+                                        <p
+                                            v-if="
+                                                assignment.instructions
+                                            "
+                                            class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-500"
+                                        >
+                                            {{
+                                                assignment.instructions
+                                            }}
+                                        </p>
+
+                                        <p
+                                            class="mt-3 text-xs text-slate-400"
+                                        >
+                                            Deadline:
+                                            {{
+                                                formatDate(
+                                                    assignment.deadline
+                                                )
+                                            }}
+                                        </p>
+
+                                        <!-- Files -->
+                                        <div
+                                            v-if="
+                                                assignment
+                                                    .attachments
+                                                    ?.length
+                                            "
+                                            class="mt-3 flex flex-wrap gap-2"
+                                        >
+                                            <a
+                                                v-for="attachment in assignment.attachments"
+                                                :key="
+                                                    attachment.id
+                                                "
+                                                :href="
+                                                    attachment.url
+                                                "
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700"
+                                            >
+                                                📎
+                                                {{
+                                                    attachment.name
+                                                }}
+                                            </a>
+                                        </div>
+
+                                        <div
+                                            v-if="
+                                                assignment.feedback
+                                            "
+                                            class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-800"
+                                        >
+                                            <span
+                                                class="font-medium"
+                                            >
+                                                Feedback:
+                                            </span>
+
+                                            {{
+                                                assignment.feedback
+                                            }}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        v-if="
+                                            assignment.grade
+                                                !== null
+                                            && assignment.grade
+                                                !== undefined
+                                        "
+                                        class="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700"
+                                    >
+                                        Grade:
+                                        {{
+                                            assignment.grade
+                                        }}
+                                    </div>
+                                </div>
+                            </article>
                         </div>
                     </section>
                 </div>
 
-                <!-- Right column -->
-                <div class="space-y-6 lg:col-span-2">
-
-                    <!-- Private notes -->
+                <!-- Right -->
+                <div
+                    class="space-y-6 lg:col-span-2"
+                >
+                    <!-- Notes -->
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
-                        <div
-                            class="flex items-start justify-between gap-4"
+                        <h2
+                            class="font-medium text-slate-900"
                         >
-                            <div>
-                                <h2
-                                    class="font-medium text-slate-900"
-                                >
-                                    Private notes
-                                </h2>
+                            Private notes
+                        </h2>
 
-                                <p
-                                    class="mt-1 text-sm text-slate-500"
-                                >
-                                    Visible only to you.
-                                </p>
-                            </div>
-
-                            <span
-                                class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    class="h-5 w-5"
-                                >
-                                    <rect
-                                        width="18"
-                                        height="11"
-                                        x="3"
-                                        y="11"
-                                        rx="2"
-                                    />
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M7 11V7a5 5 0 0 1 10 0v4"
-                                    />
-                                </svg>
-                            </span>
-                        </div>
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Visible only to you.
+                        </p>
 
                         <textarea
                             v-model="
@@ -786,12 +968,13 @@ const handleAttachments = (event) => {
                             "
                             rows="9"
                             placeholder="Add private notes about this student..."
-                            class="mt-5 block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-3 text-sm placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            class="mt-5 block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-3 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                         ></textarea>
 
                         <p
                             v-if="
-                                notesForm.errors.private_notes
+                                notesForm.errors
+                                    .private_notes
                             "
                             class="mt-1 text-xs text-red-600"
                         >
@@ -817,7 +1000,7 @@ const handleAttachments = (event) => {
                         </button>
                     </section>
 
-                    <!-- Student details -->
+                    <!-- Details -->
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
@@ -831,7 +1014,9 @@ const handleAttachments = (event) => {
                             class="mt-5 space-y-4 text-sm"
                         >
                             <div>
-                                <p class="text-slate-400">
+                                <p
+                                    class="text-slate-400"
+                                >
                                     Name
                                 </p>
 
@@ -845,7 +1030,9 @@ const handleAttachments = (event) => {
                             <div
                                 class="border-t border-slate-100 pt-4"
                             >
-                                <p class="text-slate-400">
+                                <p
+                                    class="text-slate-400"
+                                >
                                     Email
                                 </p>
 
@@ -859,16 +1046,34 @@ const handleAttachments = (event) => {
                             <div
                                 class="border-t border-slate-100 pt-4"
                             >
-                                <p class="text-slate-400">
+                                <p
+                                    class="text-slate-400"
+                                >
                                     Subjects
                                 </p>
 
+                                <div
+                                    v-if="
+                                        subjects.length
+                                    "
+                                    class="mt-2 flex flex-wrap gap-2"
+                                >
+                                    <span
+                                        v-for="subject in subjects"
+                                        :key="
+                                            subject
+                                        "
+                                        class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                                    >
+                                        {{ subject }}
+                                    </span>
+                                </div>
+
                                 <p
+                                    v-else
                                     class="mt-1 text-slate-500"
                                 >
-                                    We will connect subjects from
-                                    the tutor-student relationship
-                                    next.
+                                    No subject linked.
                                 </p>
                             </div>
                         </div>
