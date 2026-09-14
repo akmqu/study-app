@@ -125,12 +125,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02_tutor_students.md",
+                "file": "00_program.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02_tutor_students"
+              "title": "00_program"
             }
           }
         ],
@@ -300,8 +300,8 @@
   },
   "active": "1598087b7e5a9801",
   "lastOpenFiles": [
-    "00_program.md",
     "02_tutor_students.md",
+    "00_program.md",
     "01_tutor_dashboard.md",
     "03_tutor_calendar.md",
     "changelog.md",

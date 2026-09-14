@@ -1,12 +1,24 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-defineProps({
-    upcomingAssignments: Number,
-    paymentStatus: String,
-    pendingReviews: Number,
+const props = defineProps({
+    upcomingAssignments: {
+        type: Number,
+        default: 0,
+    },
+
+    paymentStatus: {
+        type: String,
+        default: 'No payment information',
+    },
+
+    pendingReviews: {
+        type: Number,
+        default: 0,
+    },
+
     tutors: {
         type: Array,
         default: () => [],
@@ -14,19 +26,49 @@ defineProps({
 });
 
 const page = usePage();
-const successMessage = computed(() => page.props.flash?.success ?? null);
+
+const successMessage = computed(
+    () => page.props.flash?.success ?? null
+);
+
+const user = computed(
+    () => page.props.auth?.user ?? {}
+);
 
 const form = useForm({
     code: '',
 });
 
-const redeem = () => {
-    form.code = String(form.code ?? '').trim().toUpperCase();
+const submitCode = () => {
+    if (form.processing) {
+        return;
+    }
 
-    form.post(route('student.invitations.redeem'), {
-        preserveScroll: true,
-        onSuccess: () => form.reset('code'),
-    });
+    form.code = String(form.code ?? '')
+        .trim()
+        .toUpperCase();
+
+    form.post(
+        route('student.invitations.redeem'),
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                form.reset('code');
+            },
+        }
+    );
+};
+
+const tutorInitials = (name) => {
+    return String(name ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) =>
+            part.charAt(0).toUpperCase()
+        )
+        .join('');
 };
 </script>
 
@@ -34,133 +76,464 @@ const redeem = () => {
     <Head title="Student Dashboard" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Student Dashboard
-            </h2>
-        </template>
-
-        <div class="mx-auto max-w-7xl bg-gray-50 p-6">
-
         <div
-            v-if="successMessage"
-            class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
         >
-            {{ successMessage }}
-        </div>
+            <!-- Heading -->
+            <div class="mb-8">
+                <p
+                    class="text-sm font-medium text-indigo-600"
+                >
+                    Student workspace
+                </p>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div class="rounded bg-white p-4 shadow">
-                <p class="text-sm text-gray-500">Upcoming Assignments</p>
-                <p class="text-2xl font-bold">{{ upcomingAssignments }}</p>
-            </div>
-            <div class="rounded bg-white p-4 shadow">
-                <p class="text-sm text-gray-500">Payment Status</p>
-                <p class="text-2xl font-bold text-amber-600">{{ paymentStatus }}</p>
-            </div>
-            <div class="rounded bg-white p-4 shadow">
-                <p class="text-sm text-gray-500">Pending Reviews</p>
-                <p class="text-2xl font-bold">{{ pendingReviews ?? 0 }}</p>
-            </div>
-        </div>
+                <h1
+                    class="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl"
+                >
+                    Welcome back, {{ user.name }}
+                </h1>
 
-        <div class="mb-6 rounded bg-white p-4 shadow">
-            <h2 class="mb-1 text-lg font-semibold text-gray-900">
-                Redeem invitation code
-            </h2>
-            <p class="mb-4 text-sm text-gray-500">
-                Enter the 8-character code from your tutor to link your account.
-            </p>
+                <p
+                    class="mt-1 text-sm text-slate-500"
+                >
+                    Keep track of homework, tutors and
+                    your learning progress.
+                </p>
+            </div>
 
-            <form
-                class="flex flex-col gap-3 sm:flex-row sm:items-start"
-                @submit.prevent="redeem"
+            <!-- Success -->
+            <div
+                v-if="successMessage"
+                class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
             >
-                <div class="w-full sm:max-w-xs">
-                    <label
-                        for="code"
-                        class="mb-1 block text-sm font-medium text-gray-700"
+                {{ successMessage }}
+            </div>
+
+            <!-- Stats -->
+            <div
+                class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
+                <!-- Assignments -->
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between"
                     >
-                        Invitation code
-                    </label>
-                    <input
-                        id="code"
-                        v-model="form.code"
-                        type="text"
-                        maxlength="8"
-                        required
-                        placeholder="ABCD1234"
-                        class="block w-full rounded-md border-gray-300 font-mono uppercase tracking-wider shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    />
+                        <p
+                            class="text-sm font-medium text-slate-500"
+                        >
+                            Upcoming assignments
+                        </p>
+
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-5 w-5"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    d="M14 2v6h6"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+
                     <p
-                        v-if="form.errors.code"
-                        class="mt-2 text-sm text-red-600"
+                        class="mt-3 text-3xl font-semibold text-slate-900"
                     >
-                        {{ form.errors.code }}
+                        {{ upcomingAssignments }}
+                    </p>
+
+                    <Link
+                        :href="
+                            route('student.assignments')
+                        "
+                        class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                        View assignments
+
+                        <span>→</span>
+                    </Link>
+                </div>
+
+                <!-- Reviews -->
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between"
+                    >
+                        <p
+                            class="text-sm font-medium text-slate-500"
+                        >
+                            Pending reviews
+                        </p>
+
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-5 w-5"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M12 8v4l3 3"
+                                />
+                                <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="9"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <p
+                        class="mt-3 text-3xl font-semibold text-slate-900"
+                    >
+                        {{ pendingReviews }}
+                    </p>
+
+                    <p
+                        class="mt-4 text-sm text-slate-400"
+                    >
+                        Waiting for tutor feedback
                     </p>
                 </div>
 
-                <button
-                    type="submit"
-                    class="mt-6 inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 disabled:opacity-50 sm:mt-7"
-                    :disabled="form.processing"
+                <!-- Payments -->
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
-                    {{ form.processing ? 'Linking…' : 'Link Tutor' }}
-                </button>
-            </form>
-        </div>
+                    <div
+                        class="flex items-center justify-between"
+                    >
+                        <p
+                            class="text-sm font-medium text-slate-500"
+                        >
+                            Payment status
+                        </p>
 
-        <div class="mb-6 overflow-hidden rounded bg-white shadow">
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h2 class="text-lg font-semibold text-gray-900">Your tutors</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Name
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Email
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr v-if="tutors.length === 0">
-                            <td
-                                colspan="2"
-                                class="px-4 py-8 text-center text-gray-500"
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-5 w-5"
                             >
-                                No tutors linked yet. Redeem an invitation code
-                                above.
-                            </td>
-                        </tr>
-                        <tr
+                                <rect
+                                    width="20"
+                                    height="14"
+                                    x="2"
+                                    y="5"
+                                    rx="2"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    d="M2 10h20"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <p
+                        class="mt-4 text-base font-semibold text-slate-900"
+                    >
+                        {{ paymentStatus }}
+                    </p>
+
+                    <p
+                        class="mt-4 text-sm text-slate-400"
+                    >
+                        Payment information
+                    </p>
+                </div>
+            </div>
+
+            <!-- Main grid -->
+            <div
+                class="mt-6 grid gap-6 lg:grid-cols-5"
+            >
+                <!-- Tutors -->
+                <section
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-3"
+                >
+                    <div
+                        class="border-b border-slate-100 px-5 py-4"
+                    >
+                        <h2
+                            class="font-medium text-slate-900"
+                        >
+                            Your tutors
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Tutors currently connected to
+                            your account.
+                        </p>
+                    </div>
+
+                    <!-- No tutors -->
+                    <div
+                        v-if="tutors.length === 0"
+                        class="flex min-h-64 flex-col items-center justify-center px-6 text-center"
+                    >
+                        <span
+                            class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-6 w-6"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                                />
+                                <circle
+                                    cx="9"
+                                    cy="7"
+                                    r="4"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    d="M19 8v6M22 11h-6"
+                                />
+                            </svg>
+                        </span>
+
+                        <h3
+                            class="mt-4 text-sm font-medium text-slate-900"
+                        >
+                            No tutors yet
+                        </h3>
+
+                        <p
+                            class="mt-1 max-w-sm text-sm text-slate-500"
+                        >
+                            Redeem an invitation code to
+                            connect with a tutor.
+                        </p>
+                    </div>
+
+                    <!-- Tutor list -->
+                    <div
+                        v-else
+                        class="divide-y divide-slate-100"
+                    >
+                        <div
                             v-for="tutor in tutors"
                             :key="tutor.id"
-                            class="hover:bg-gray-50"
+                            class="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50/70"
                         >
-                            <td class="px-4 py-3 font-medium text-gray-900">
-                                {{ tutor.name }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ tutor.email }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                            <span
+                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700"
+                            >
+                                {{
+                                    tutorInitials(
+                                        tutor.name
+                                    )
+                                }}
+                            </span>
 
-        <div class="rounded bg-white p-4 shadow">
-            <h2 class="mb-2 text-lg font-semibold">Quick Notes</h2>
-            <textarea
-                class="w-full rounded-md border-gray-300 p-2 text-sm"
-                rows="3"
-                placeholder="Write quick reminders here..."
-            ></textarea>
+                            <div
+                                class="min-w-0 flex-1"
+                            >
+                                <p
+                                    class="truncate text-sm font-medium text-slate-900"
+                                >
+                                    {{ tutor.name }}
+                                </p>
+
+                                <p
+                                    v-if="tutor.subject"
+                                    class="mt-0.5 text-sm text-slate-500"
+                                >
+                                    {{ tutor.subject }}
+                                </p>
+                            </div>
+
+                            <span
+                                class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
+                            >
+                                Active
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Invitation -->
+                <section
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2"
+                >
+                    <div
+                        class="flex items-center gap-3"
+                    >
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-5 w-5"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M12 5v14M5 12h14"
+                                />
+                            </svg>
+                        </span>
+
+                        <div>
+                            <h2
+                                class="font-medium text-slate-900"
+                            >
+                                Join a tutor
+                            </h2>
+
+                            <p
+                                class="text-sm text-slate-500"
+                            >
+                                Redeem invitation code
+                            </p>
+                        </div>
+                    </div>
+
+                    <p
+                        class="mt-5 text-sm leading-6 text-slate-500"
+                    >
+                        Enter the invitation code shared
+                        by your tutor to connect your
+                        account.
+                    </p>
+
+                    <form
+                        class="mt-5 space-y-4"
+                        @submit.prevent="submitCode"
+                    >
+                        <div>
+                            <label
+                                for="invitation-code"
+                                class="mb-1.5 block text-sm font-medium text-slate-700"
+                            >
+                                Invitation code
+                            </label>
+
+                            <input
+                                id="invitation-code"
+                                v-model="form.code"
+                                type="text"
+                                maxlength="8"
+                                required
+                                placeholder="ABC12345"
+                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-sm uppercase tracking-widest placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            />
+
+                            <p
+                                v-if="form.errors.code"
+                                class="mt-1.5 text-xs text-red-600"
+                            >
+                                {{ form.errors.code }}
+                            </p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            :disabled="
+                                form.processing
+                            "
+                            class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {{
+                                form.processing
+                                    ? 'Connecting...'
+                                    : 'Redeem code'
+                            }}
+                        </button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Assignments preview -->
+            <section
+                class="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+                <div
+                    class="flex items-center justify-between gap-4"
+                >
+                    <div>
+                        <h2
+                            class="font-medium text-slate-900"
+                        >
+                            Assignments
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Your homework overview.
+                        </p>
+                    </div>
+
+                    <Link
+                        :href="
+                            route('student.assignments')
+                        "
+                        class="text-sm font-medium text-indigo-600 transition hover:text-indigo-700"
+                    >
+                        View all →
+                    </Link>
+                </div>
+
+                <div
+                    class="mt-5 flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 text-center"
+                >
+                    <p
+                        class="text-sm font-medium text-slate-700"
+                    >
+                        Assignments will appear here
+                    </p>
+
+                    <p
+                        class="mt-1 text-xs text-slate-400"
+                    >
+                        We'll connect the real assignment
+                        list after the design pass.
+                    </p>
+                </div>
+            </section>
         </div>
-    </div>
     </AuthenticatedLayout>
 </template>

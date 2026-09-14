@@ -1,10 +1,6 @@
 <script setup>
-import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { nextTick, ref } from 'vue';
 
@@ -18,14 +14,21 @@ const form = useForm({
 const confirmUserDeletion = () => {
     confirmingUserDeletion.value = true;
 
-    nextTick(() => passwordInput.value.focus());
+    nextTick(() => {
+        passwordInput.value?.focus();
+    });
 };
 
 const deleteUser = () => {
     form.delete(route('profile.destroy'), {
         preserveScroll: true,
+
         onSuccess: () => closeModal(),
-        onError: () => passwordInput.value.focus(),
+
+        onError: () => {
+            passwordInput.value?.focus();
+        },
+
         onFinish: () => form.reset(),
     });
 };
@@ -39,68 +42,153 @@ const closeModal = () => {
 </script>
 
 <template>
-    <section class="space-y-6">
-        <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Delete Account
-            </h2>
-
-            <p class="mt-1 text-sm text-gray-600">
-                Once your account is deleted, all of its resources and data will
-                be permanently deleted. Before deleting your account, please
-                download any data or information that you wish to retain.
-            </p>
-        </header>
-
-        <DangerButton @click="confirmUserDeletion">Delete Account</DangerButton>
-
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="p-6">
-                <h2
-                    class="text-lg font-medium text-gray-900"
+    <section>
+        <div
+            class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
+        >
+            <div class="flex items-start gap-3">
+                <span
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600"
                 >
-                    Are you sure you want to delete your account?
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-5 w-5"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            d="M10 11v5M14 11v5"
+                        />
+                    </svg>
+                </span>
+
+                <div>
+                    <h2 class="font-medium text-slate-900">
+                        Delete account
+                    </h2>
+
+                    <p
+                        class="mt-1 max-w-xl text-sm leading-6 text-slate-500"
+                    >
+                        Permanently delete your account and
+                        all associated data. This action
+                        cannot be undone.
+                    </p>
+                </div>
+            </div>
+
+            <button
+                type="button"
+                class="shrink-0 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700"
+                @click="confirmUserDeletion"
+            >
+                Delete account
+            </button>
+        </div>
+
+        <!-- Confirmation modal -->
+        <Modal
+            :show="confirmingUserDeletion"
+            max-width="md"
+            @close="closeModal"
+        >
+            <div class="p-6">
+                <div
+                    class="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-5 w-5"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 9v4M12 17h.01"
+                        />
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M10.3 3.7 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"
+                        />
+                    </svg>
+                </div>
+
+                <h2
+                    class="mt-4 text-lg font-semibold text-slate-900"
+                >
+                    Delete your account?
                 </h2>
 
-                <p class="mt-1 text-sm text-gray-600">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Please enter your password to
-                    confirm you would like to permanently delete your account.
+                <p
+                    class="mt-2 text-sm leading-6 text-slate-500"
+                >
+                    This will permanently delete your
+                    account and its data. Enter your
+                    password to confirm.
                 </p>
 
-                <div class="mt-6">
-                    <InputLabel
-                        for="password"
-                        value="Password"
-                        class="sr-only"
-                    />
+                <div class="mt-5">
+                    <label
+                        for="delete-password"
+                        class="mb-1.5 block text-sm font-medium text-slate-700"
+                    >
+                        Password
+                    </label>
 
-                    <TextInput
-                        id="password"
+                    <input
+                        id="delete-password"
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="mt-1 block w-3/4"
-                        placeholder="Password"
+                        placeholder="Enter your password"
+                        class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-red-500"
                         @keyup.enter="deleteUser"
                     />
 
-                    <InputError :message="form.errors.password" class="mt-2" />
+                    <InputError
+                        class="mt-1.5"
+                        :message="form.errors.password"
+                    />
                 </div>
 
-                <div class="mt-6 flex justify-end">
-                    <SecondaryButton @click="closeModal">
-                        Cancel
-                    </SecondaryButton>
-
-                    <DangerButton
-                        class="ms-3"
-                        :class="{ 'opacity-25': form.processing }"
+                <div
+                    class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5"
+                >
+                    <button
+                        type="button"
                         :disabled="form.processing"
+                        class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                        @click="closeModal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="button"
+                        :disabled="form.processing"
+                        class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                         @click="deleteUser"
                     >
-                        Delete Account
-                    </DangerButton>
+                        {{
+                            form.processing
+                                ? 'Deleting...'
+                                : 'Delete account'
+                        }}
+                    </button>
                 </div>
             </div>
         </Modal>

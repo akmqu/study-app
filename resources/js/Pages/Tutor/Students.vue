@@ -2,11 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 
@@ -15,10 +12,12 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+
     invitations: {
         type: Array,
         default: () => [],
     },
+
     generatedCode: {
         type: String,
         default: null,
@@ -26,9 +25,16 @@ const props = defineProps({
 });
 
 const page = usePage();
-const successMessage = computed(() => page.props.flash?.success ?? null);
+
+const successMessage = computed(
+    () => page.props.flash?.success ?? null
+);
+
 const flashedCode = computed(
-    () => page.props.flash?.generated_code ?? props.generatedCode ?? null,
+    () =>
+        page.props.flash?.generated_code ??
+        props.generatedCode ??
+        null
 );
 
 const showAddForm = ref(false);
@@ -51,7 +57,9 @@ const deleteInvitationForm = useForm({});
 
 const openAddForm = async () => {
     showAddForm.value = true;
+
     await nextTick();
+
     nameInput.value?.focus();
 };
 
@@ -61,6 +69,7 @@ const closeAddForm = () => {
     }
 
     showAddForm.value = false;
+
     inviteForm.reset();
     inviteForm.clearErrors();
 };
@@ -70,16 +79,24 @@ const submitGenerateCode = () => {
         return;
     }
 
-    inviteForm.student_name = String(inviteForm.student_name ?? '').trim();
-    inviteForm.subject = String(inviteForm.subject ?? '').trim();
+    inviteForm.student_name = String(
+        inviteForm.student_name ?? ''
+    ).trim();
+
+    inviteForm.subject = String(
+        inviteForm.subject ?? ''
+    ).trim();
 
     inviteForm.post(route('tutor.invitations.store'), {
         preserveScroll: true,
+
         onSuccess: () => {
             inviteForm.reset();
             inviteForm.clearErrors();
+
             showAddForm.value = false;
         },
+
         onError: () => {
             showAddForm.value = true;
         },
@@ -89,7 +106,9 @@ const submitGenerateCode = () => {
 const copyCode = async (code) => {
     try {
         await navigator.clipboard.writeText(code);
+
         copyFeedback.value = code;
+
         setTimeout(() => {
             if (copyFeedback.value === code) {
                 copyFeedback.value = null;
@@ -106,7 +125,9 @@ const openRemoveModal = (student) => {
     }
 
     removeError.value = null;
+
     removeForm.clearErrors();
+
     studentPendingRemoval.value = student;
 };
 
@@ -117,30 +138,39 @@ const closeRemoveModal = () => {
 
     studentPendingRemoval.value = null;
     removeError.value = null;
+
     removeForm.clearErrors();
 };
 
 const confirmRemoveStudent = () => {
-    if (!studentPendingRemoval.value || removeForm.processing) {
+    if (
+        !studentPendingRemoval.value ||
+        removeForm.processing
+    ) {
         return;
     }
 
     removeError.value = null;
 
     removeForm.delete(
-        route('tutor.students.destroy', studentPendingRemoval.value.id),
+        route(
+            'tutor.students.destroy',
+            studentPendingRemoval.value.id
+        ),
         {
             preserveScroll: true,
             replace: true,
+
             onSuccess: () => {
                 studentPendingRemoval.value = null;
                 removeError.value = null;
             },
+
             onError: () => {
                 removeError.value =
                     'Unable to remove this student. Please try again.';
             },
-        },
+        }
     );
 };
 
@@ -150,7 +180,9 @@ const openDeleteInvitationModal = (invitation) => {
     }
 
     deleteInvitationError.value = null;
+
     deleteInvitationForm.clearErrors();
+
     invitationPendingDeletion.value = invitation;
 };
 
@@ -161,11 +193,15 @@ const closeDeleteInvitationModal = () => {
 
     invitationPendingDeletion.value = null;
     deleteInvitationError.value = null;
+
     deleteInvitationForm.clearErrors();
 };
 
 const confirmDeleteInvitation = () => {
-    if (!invitationPendingDeletion.value || deleteInvitationForm.processing) {
+    if (
+        !invitationPendingDeletion.value ||
+        deleteInvitationForm.processing
+    ) {
         return;
     }
 
@@ -174,19 +210,21 @@ const confirmDeleteInvitation = () => {
     deleteInvitationForm.delete(
         route(
             'tutor.invitations.destroy',
-            invitationPendingDeletion.value.id,
+            invitationPendingDeletion.value.id
         ),
         {
             preserveScroll: true,
+
             onSuccess: () => {
                 invitationPendingDeletion.value = null;
                 deleteInvitationError.value = null;
             },
+
             onError: () => {
                 deleteInvitationError.value =
                     'Unable to delete this invitation code. Please try again.';
             },
-        },
+        }
     );
 };
 
@@ -217,11 +255,24 @@ const formatDate = (value) => {
 };
 
 const formatPrice = (value) => {
-    if (value === null || value === undefined || value === '') {
+    if (
+        value === null ||
+        value === undefined ||
+        value === ''
+    ) {
         return '—';
     }
 
     return Number(value).toFixed(2);
+};
+
+const studentInitials = (name) => {
+    return String(name ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('');
 };
 </script>
 
@@ -229,349 +280,782 @@ const formatPrice = (value) => {
     <Head title="Students" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Students
-                </h2>
+        <div
+            class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
+        >
+            <!-- Page heading -->
+            <div
+                class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+            >
+                <div>
+                    <h1
+                        class="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl"
+                    >
+                        Students
+                    </h1>
+
+                    <p class="mt-1 text-sm text-slate-500">
+                        Manage your students and send invitation
+                        codes to new learners.
+                    </p>
+                </div>
 
                 <button
                     type="button"
-                    class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
                     :disabled="inviteForm.processing"
+                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
                     @click="openAddForm"
                 >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-4 w-4"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            d="M12 5v14M5 12h14"
+                        />
+                    </svg>
+
                     Add student
                 </button>
             </div>
-        </template>
 
-        <div class="min-h-screen bg-gray-100 p-6">
-
-        <div
-            v-if="successMessage"
-            class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-        >
-            {{ successMessage }}
-        </div>
-
-        <div
-            v-if="flashedCode"
-            class="mb-4 rounded border border-indigo-200 bg-indigo-50 px-4 py-3"
-        >
-            <p class="text-sm font-medium text-indigo-900">
-                Share this code with your student
-            </p>
-            <div class="mt-2 flex flex-wrap items-center gap-3">
-                <span
-                    class="font-mono text-2xl font-semibold tracking-wider text-indigo-950"
-                >
-                    {{ flashedCode }}
-                </span>
-                <button
-                    type="button"
-                    class="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-sm font-medium text-indigo-800 transition hover:bg-indigo-100"
-                    @click="copyCode(flashedCode)"
-                >
-                    {{
-                        copyFeedback === flashedCode ? 'Copied!' : 'Copy code'
-                    }}
-                </button>
-            </div>
-        </div>
-
-        <div
-            v-if="showAddForm"
-            class="mb-6 overflow-hidden rounded bg-white shadow"
-        >
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h2 class="text-lg font-semibold text-gray-900">
-                    Add student
-                </h2>
-                <p class="text-sm text-gray-500">
-                    Enter setup details, then generate a code for the student to
-                    redeem on their account.
-                </p>
+            <!-- Success -->
+            <div
+                v-if="successMessage"
+                class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            >
+                {{ successMessage }}
             </div>
 
-            <form class="space-y-4 p-4" @submit.prevent="submitGenerateCode">
-                <div class="grid gap-4 md:grid-cols-3">
+            <!-- Generated invitation -->
+            <div
+                v-if="flashedCode"
+                class="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 p-5"
+            >
+                <div
+                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div>
-                        <InputLabel for="student_name" value="Student name" />
-                        <TextInput
-                            id="student_name"
-                            ref="nameInput"
-                            v-model="inviteForm.student_name"
-                            type="text"
-                            class="mt-1 block w-full"
-                            required
-                            :disabled="inviteForm.processing"
-                        />
-                        <InputError
-                            class="mt-2"
-                            :message="inviteForm.errors.student_name"
-                        />
+                        <div class="flex items-center gap-2">
+                            <span
+                                class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    class="h-4 w-4"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M15 7h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3"
+                                    />
+                                    <rect
+                                        width="12"
+                                        height="12"
+                                        x="3"
+                                        y="3"
+                                        rx="2"
+                                    />
+                                </svg>
+                            </span>
+
+                            <p
+                                class="text-sm font-medium text-indigo-950"
+                            >
+                                Invitation code created
+                            </p>
+                        </div>
+
+                        <p
+                            class="mt-2 text-sm text-indigo-700"
+                        >
+                            Send this code to the student so they
+                            can connect their account with yours.
+                        </p>
                     </div>
 
-                    <div>
-                        <InputLabel for="subject" value="Subject" />
-                        <TextInput
-                            id="subject"
-                            v-model="inviteForm.subject"
-                            type="text"
-                            class="mt-1 block w-full"
-                            required
-                            :disabled="inviteForm.processing"
-                        />
-                        <InputError
-                            class="mt-2"
-                            :message="inviteForm.errors.subject"
-                        />
-                    </div>
+                    <div
+                        class="flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-sm"
+                    >
+                        <span
+                            class="font-mono text-xl font-semibold tracking-widest text-slate-900"
+                        >
+                            {{ flashedCode }}
+                        </span>
 
-                    <div>
-                        <InputLabel for="price" value="Payment / price" />
-                        <TextInput
-                            id="price"
-                            v-model="inviteForm.price"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            class="mt-1 block w-full"
-                            placeholder="Optional"
-                            :disabled="inviteForm.processing"
-                        />
-                        <InputError
-                            class="mt-2"
-                            :message="inviteForm.errors.price"
-                        />
+                        <button
+                            type="button"
+                            class="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                            @click="copyCode(flashedCode)"
+                        >
+                            {{
+                                copyFeedback === flashedCode
+                                    ? 'Copied!'
+                                    : 'Copy'
+                            }}
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <div class="flex flex-wrap gap-2">
-                    <PrimaryButton
-                        type="submit"
-                        :class="{ 'opacity-25': inviteForm.processing }"
-                        :disabled="inviteForm.processing"
-                    >
-                        {{
-                            inviteForm.processing
-                                ? 'Generating…'
-                                : 'Generate code'
-                        }}
-                    </PrimaryButton>
-                    <SecondaryButton
+            <!-- Add student -->
+            <div
+                v-if="showAddForm"
+                class="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+                <div
+                    class="mb-5 flex items-start justify-between gap-4"
+                >
+                    <div>
+                        <h2
+                            class="font-medium text-slate-900"
+                        >
+                            Invite a new student
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Enter the student's details and
+                            generate an invitation code.
+                        </p>
+                    </div>
+
+                    <button
                         type="button"
-                        :disabled="inviteForm.processing"
+                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                         @click="closeAddForm"
                     >
-                        Cancel
-                    </SecondaryButton>
-                </div>
-            </form>
-        </div>
-
-        <div class="mb-6 overflow-hidden rounded bg-white shadow">
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h2 class="text-lg font-semibold text-gray-900">
-                    Active invitation codes
-                </h2>
-                <p class="text-sm text-gray-500">
-                    Pending codes that students can still redeem.
-                </p>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Code
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Student
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Subject
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Price
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Expires
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr v-if="invitations.length === 0">
-                            <td
-                                colspan="6"
-                                class="px-4 py-8 text-center text-gray-500"
-                            >
-                                No active codes. Use Add student to generate
-                                one.
-                            </td>
-                        </tr>
-                        <tr
-                            v-for="invitation in invitations"
-                            :key="invitation.id"
-                            class="hover:bg-gray-50"
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            class="h-5 w-5"
                         >
-                            <td
-                                class="px-4 py-3 font-mono text-base font-semibold tracking-wider text-gray-900"
-                            >
-                                {{ invitation.code }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ invitation.student_name || '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ invitation.subject || '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ formatPrice(invitation.price) }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ formatDateTime(invitation.expires_at) }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                                        @click="copyCode(invitation.code)"
-                                    >
-                                        {{
-                                            copyFeedback === invitation.code
-                                                ? 'Copied!'
-                                                : 'Copy'
-                                        }}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                                        :disabled="
-                                            deleteInvitationForm.processing &&
-                                            invitationPendingDeletion?.id ===
-                                                invitation.id
-                                        "
-                                        @click="
-                                            openDeleteInvitationModal(
-                                                invitation,
-                                            )
-                                        "
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                            <path
+                                stroke-linecap="round"
+                                d="M6 6l12 12M18 6 6 18"
+                            />
+                        </svg>
+                    </button>
+                </div>
 
-        <div class="overflow-hidden rounded bg-white shadow">
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h2 class="text-lg font-semibold text-gray-900">
-                    Linked students
-                </h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Name
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Email
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Linked
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-600">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr v-if="students.length === 0">
-                            <td
-                                colspan="4"
-                                class="px-4 py-8 text-center text-gray-500"
+                <form
+                    class="space-y-5"
+                    @submit.prevent="submitGenerateCode"
+                >
+                    <div
+                        class="grid gap-4 md:grid-cols-3"
+                    >
+                        <!-- Student name -->
+                        <div>
+                            <label
+                                for="student_name"
+                                class="mb-1.5 block text-sm font-medium text-slate-700"
                             >
-                                No linked students yet. Share an invitation
-                                code to get started.
-                            </td>
-                        </tr>
-                        <tr
+                                Student name
+                            </label>
+
+                            <input
+                                id="student_name"
+                                ref="nameInput"
+                                v-model="inviteForm.student_name"
+                                type="text"
+                                required
+                                :disabled="inviteForm.processing"
+                                placeholder="e.g. Alex Johnson"
+                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            />
+
+                            <InputError
+                                class="mt-1"
+                                :message="
+                                    inviteForm.errors.student_name
+                                "
+                            />
+                        </div>
+
+                        <!-- Subject -->
+                        <div>
+                            <label
+                                for="subject"
+                                class="mb-1.5 block text-sm font-medium text-slate-700"
+                            >
+                                Subject
+                            </label>
+
+                            <input
+                                id="subject"
+                                v-model="inviteForm.subject"
+                                type="text"
+                                required
+                                :disabled="inviteForm.processing"
+                                placeholder="e.g. Mathematics"
+                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            />
+
+                            <InputError
+                                class="mt-1"
+                                :message="
+                                    inviteForm.errors.subject
+                                "
+                            />
+                        </div>
+
+                        <!-- Price -->
+                        <div>
+                            <label
+                                for="price"
+                                class="mb-1.5 block text-sm font-medium text-slate-700"
+                            >
+                                Lesson price
+                            </label>
+
+                            <input
+                                id="price"
+                                v-model="inviteForm.price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                :disabled="inviteForm.processing"
+                                placeholder="Optional"
+                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            />
+
+                            <InputError
+                                class="mt-1"
+                                :message="
+                                    inviteForm.errors.price
+                                "
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5"
+                    >
+                        <button
+                            type="button"
+                            :disabled="inviteForm.processing"
+                            class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                            @click="closeAddForm"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            :disabled="inviteForm.processing"
+                            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            <svg
+                                v-if="!inviteForm.processing"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-4 w-4"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    d="M12 5v14M5 12h14"
+                                />
+                            </svg>
+
+                            {{
+                                inviteForm.processing
+                                    ? 'Generating...'
+                                    : 'Generate code'
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Summary -->
+            <div
+                class="mb-6 grid gap-4 sm:grid-cols-2"
+            >
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between"
+                    >
+                        <p
+                            class="text-sm font-medium text-slate-500"
+                        >
+                            Active students
+                        </p>
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            class="h-5 w-5 text-indigo-600"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                            />
+                            <circle cx="9" cy="7" r="4" />
+                            <path
+                                stroke-linecap="round"
+                                d="M22 21v-2a4 4 0 0 0-3-3.87"
+                            />
+                        </svg>
+                    </div>
+
+                    <p
+                        class="mt-3 text-3xl font-semibold text-slate-900"
+                    >
+                        {{ students.length }}
+                    </p>
+                </div>
+
+                <div
+                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between"
+                    >
+                        <p
+                            class="text-sm font-medium text-slate-500"
+                        >
+                            Pending invitations
+                        </p>
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            class="h-5 w-5 text-indigo-600"
+                        >
+                            <rect
+                                width="18"
+                                height="14"
+                                x="3"
+                                y="5"
+                                rx="2"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="m3 7 9 6 9-6"
+                            />
+                        </svg>
+                    </div>
+
+                    <p
+                        class="mt-3 text-3xl font-semibold text-slate-900"
+                    >
+                        {{ invitations.length }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Linked students -->
+                <section
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="border-b border-slate-100 px-5 py-4"
+                    >
+                        <h2
+                            class="font-medium text-slate-900"
+                        >
+                            Your students
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Open a student profile to view their
+                            progress, notes and homework.
+                        </p>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div
+                        v-if="students.length === 0"
+                        class="flex flex-col items-center justify-center px-6 py-14 text-center"
+                    >
+                        <span
+                            class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                class="h-6 w-6"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                                />
+                                <circle
+                                    cx="9"
+                                    cy="7"
+                                    r="4"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    d="M19 8v6M22 11h-6"
+                                />
+                            </svg>
+                        </span>
+
+                        <h3
+                            class="mt-4 text-sm font-medium text-slate-900"
+                        >
+                            No students yet
+                        </h3>
+
+                        <p
+                            class="mt-1 max-w-sm text-sm text-slate-500"
+                        >
+                            Generate an invitation code and send
+                            it to your first student.
+                        </p>
+                    </div>
+
+                    <!-- Student list -->
+                    <div
+                        v-else
+                        class="divide-y divide-slate-100"
+                    >
+                        <div
                             v-for="student in students"
                             :key="student.id"
-                            class="hover:bg-gray-50"
+                            class="flex flex-col gap-4 px-5 py-4 transition hover:bg-slate-50/70 sm:flex-row sm:items-center"
                         >
-                            <td class="px-4 py-3 font-medium">
-    <Link
-        :href="route('tutor.students.show', student.id)"
-        class="text-gray-900 hover:text-indigo-600 hover:underline"
-    >
-        {{ student.name }}
-    </Link>
-</td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ student.email }}
-                            </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ formatDate(student.linked_at) }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                                    :disabled="
-                                        removeForm.processing &&
-                                        studentPendingRemoval?.id === student.id
-                                    "
-                                    @click="openRemoveModal(student)"
+                            <div
+                                class="flex min-w-0 flex-1 items-center gap-3"
+                            >
+                                <span
+                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700"
                                 >
                                     {{
-                                        removeForm.processing &&
-                                        studentPendingRemoval?.id === student.id
-                                            ? 'Removing…'
-                                            : 'Remove'
+                                        studentInitials(
+                                            student.name
+                                        )
                                     }}
+                                </span>
+
+                                <div class="min-w-0">
+                                    <Link
+                                        :href="
+                                            route(
+                                                'tutor.students.show',
+                                                student.id
+                                            )
+                                        "
+                                        class="block truncate text-sm font-medium text-slate-900 transition hover:text-indigo-600"
+                                    >
+                                        {{ student.name }}
+                                    </Link>
+
+                                    <p
+                                        class="truncate text-sm text-slate-500"
+                                    >
+                                        {{ student.email }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                class="text-sm text-slate-500 sm:w-36"
+                            >
+                                <span
+                                    class="block text-xs text-slate-400"
+                                >
+                                    Linked
+                                </span>
+
+                                {{
+                                    formatDate(
+                                        student.linked_at
+                                    )
+                                }}
+                            </div>
+
+                            <div
+                                class="flex items-center gap-2"
+                            >
+                                <Link
+                                    :href="
+                                        route(
+                                            'tutor.students.show',
+                                            student.id
+                                        )
+                                    "
+                                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                                >
+                                    View profile
+                                </Link>
+
+                                <button
+                                    type="button"
+                                    :disabled="
+                                        removeForm.processing &&
+                                        studentPendingRemoval?.id ===
+                                            student.id
+                                    "
+                                    class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                    @click="
+                                        openRemoveModal(
+                                            student
+                                        )
+                                    "
+                                >
+                                    Remove
                                 </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Active invitations -->
+                <section
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4"
+                    >
+                        <div>
+                            <h2
+                                class="font-medium text-slate-900"
+                            >
+                                Active invitation codes
+                            </h2>
+
+                            <p
+                                class="mt-1 text-sm text-slate-500"
+                            >
+                                Codes that students can still
+                                redeem.
+                            </p>
+                        </div>
+
+                        <span
+                            class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+                        >
+                            {{ invitations.length }} active
+                        </span>
+                    </div>
+
+                    <div
+                        v-if="invitations.length === 0"
+                        class="px-6 py-10 text-center text-sm text-slate-500"
+                    >
+                        No active invitation codes.
+                    </div>
+
+                    <div
+                        v-else
+                        class="overflow-x-auto"
+                    >
+                        <table
+                            class="min-w-full text-left text-sm"
+                        >
+                            <thead
+                                class="border-b border-slate-100 bg-slate-50/70"
+                            >
+                                <tr>
+                                    <th
+                                        class="px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Code
+                                    </th>
+
+                                    <th
+                                        class="px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Student
+                                    </th>
+
+                                    <th
+                                        class="px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Subject
+                                    </th>
+
+                                    <th
+                                        class="px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Price
+                                    </th>
+
+                                    <th
+                                        class="px-5 py-3 text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Expires
+                                    </th>
+
+                                    <th
+                                        class="px-5 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500"
+                                    >
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody
+                                class="divide-y divide-slate-100"
+                            >
+                                <tr
+                                    v-for="invitation in invitations"
+                                    :key="invitation.id"
+                                    class="transition hover:bg-slate-50/70"
+                                >
+                                    <td class="px-5 py-4">
+                                        <span
+                                            class="rounded-md bg-slate-100 px-2.5 py-1.5 font-mono font-semibold tracking-wider text-slate-800"
+                                        >
+                                            {{
+                                                invitation.code
+                                            }}
+                                        </span>
+                                    </td>
+
+                                    <td
+                                        class="px-5 py-4 text-slate-700"
+                                    >
+                                        {{
+                                            invitation.student_name ||
+                                            '—'
+                                        }}
+                                    </td>
+
+                                    <td
+                                        class="px-5 py-4 text-slate-600"
+                                    >
+                                        {{
+                                            invitation.subject ||
+                                            '—'
+                                        }}
+                                    </td>
+
+                                    <td
+                                        class="px-5 py-4 text-slate-600"
+                                    >
+                                        {{
+                                            formatPrice(
+                                                invitation.price
+                                            )
+                                        }}
+                                    </td>
+
+                                    <td
+                                        class="whitespace-nowrap px-5 py-4 text-slate-500"
+                                    >
+                                        {{
+                                            formatDateTime(
+                                                invitation.expires_at
+                                            )
+                                        }}
+                                    </td>
+
+                                    <td
+                                        class="px-5 py-4"
+                                    >
+                                        <div
+                                            class="flex justify-end gap-2"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                                                @click="
+                                                    copyCode(
+                                                        invitation.code
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    copyFeedback ===
+                                                    invitation.code
+                                                        ? 'Copied!'
+                                                        : 'Copy'
+                                                }}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                :disabled="
+                                                    deleteInvitationForm.processing &&
+                                                    invitationPendingDeletion?.id ===
+                                                        invitation.id
+                                                "
+                                                class="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                                @click="
+                                                    openDeleteInvitationModal(
+                                                        invitation
+                                                    )
+                                                "
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </div>
 
+        <!-- Remove student modal -->
         <Modal
             :show="studentPendingRemoval !== null"
             max-width="md"
             @close="closeRemoveModal"
         >
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900">
+                <h2
+                    class="text-lg font-medium text-slate-900"
+                >
                     Remove student?
                 </h2>
 
-                <p class="mt-2 text-sm text-gray-600">
+                <p class="mt-2 text-sm text-slate-600">
                     Removing
-                    <span class="font-medium text-gray-900">{{
-                        studentPendingRemoval?.name
-                    }}</span>
-                    only removes them from your student list. Their account is
-                    not deleted.
+                    <span class="font-medium text-slate-900">
+                        {{ studentPendingRemoval?.name }}
+                    </span>
+                    only removes them from your student list.
+                    Their account will not be deleted.
                 </p>
 
-                <InputError class="mt-4" :message="removeError" />
+                <InputError
+                    class="mt-4"
+                    :message="removeError"
+                />
 
-                <div class="mt-6 flex justify-end gap-3">
+                <div
+                    class="mt-6 flex justify-end gap-3"
+                >
                     <SecondaryButton
                         :disabled="removeForm.processing"
                         @click="closeRemoveModal"
@@ -580,14 +1064,16 @@ const formatPrice = (value) => {
                     </SecondaryButton>
 
                     <DangerButton
-                        class="ms-0"
-                        :class="{ 'opacity-25': removeForm.processing }"
+                        :class="{
+                            'opacity-25':
+                                removeForm.processing,
+                        }"
                         :disabled="removeForm.processing"
                         @click="confirmRemoveStudent"
                     >
                         {{
                             removeForm.processing
-                                ? 'Removing…'
+                                ? 'Removing...'
                                 : 'Remove student'
                         }}
                     </DangerButton>
@@ -595,52 +1081,71 @@ const formatPrice = (value) => {
             </div>
         </Modal>
 
+        <!-- Delete invitation modal -->
         <Modal
             :show="invitationPendingDeletion !== null"
             max-width="md"
             @close="closeDeleteInvitationModal"
         >
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900">
+                <h2
+                    class="text-lg font-medium text-slate-900"
+                >
                     Delete invitation code?
                 </h2>
 
-                <p class="mt-2 text-sm text-gray-600">
+                <p class="mt-2 text-sm text-slate-600">
                     Code
-                    <span class="font-mono font-semibold text-gray-900">{{
-                        invitationPendingDeletion?.code
-                    }}</span>
-                    will become invalid immediately and can no longer be
-                    redeemed.
+                    <span
+                        class="font-mono font-semibold text-slate-900"
+                    >
+                        {{
+                            invitationPendingDeletion?.code
+                        }}
+                    </span>
+                    will become invalid immediately and can no
+                    longer be redeemed.
                 </p>
 
-                <InputError class="mt-4" :message="deleteInvitationError" />
+                <InputError
+                    class="mt-4"
+                    :message="deleteInvitationError"
+                />
 
-                <div class="mt-6 flex justify-end gap-3">
+                <div
+                    class="mt-6 flex justify-end gap-3"
+                >
                     <SecondaryButton
-                        :disabled="deleteInvitationForm.processing"
-                        @click="closeDeleteInvitationModal"
+                        :disabled="
+                            deleteInvitationForm.processing
+                        "
+                        @click="
+                            closeDeleteInvitationModal
+                        "
                     >
                         Cancel
                     </SecondaryButton>
 
                     <DangerButton
-                        class="ms-0"
                         :class="{
-                            'opacity-25': deleteInvitationForm.processing,
+                            'opacity-25':
+                                deleteInvitationForm.processing,
                         }"
-                        :disabled="deleteInvitationForm.processing"
-                        @click="confirmDeleteInvitation"
+                        :disabled="
+                            deleteInvitationForm.processing
+                        "
+                        @click="
+                            confirmDeleteInvitation
+                        "
                     >
                         {{
                             deleteInvitationForm.processing
-                                ? 'Deleting…'
+                                ? 'Deleting...'
                                 : 'Delete code'
                         }}
                     </DangerButton>
                 </div>
             </div>
         </Modal>
-    </div>
     </AuthenticatedLayout>
 </template>

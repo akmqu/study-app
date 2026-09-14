@@ -32,3 +32,32 @@ A multi-tutor SaaS platform where independent tutors manage their students, sche
 * [[06_student_assignments]] - Submitting homework, viewing grades, and resubmitting files.
 * [[07_student_payments]] - Subscription status, payment history, and billing plans.
 * [[08_student_courses]] - Overview of active courses, teachers, and prices.
+
+## Archit
+* Click button
+       ↓
+Vue / Browser
+       ↓
+HTTP request
+       ↓
+Route
+       ↓
+Controller
+       ↓
+Model / Eloquent
+       ↓
+SQL
+       ↓
+PostgreSQL
+       ↓
+bd
+       ↓
+Model / Eloquent
+       ↓
+Controller
+       ↓
+Inertia
+       ↓
+Vue
+       ↓
+Screen

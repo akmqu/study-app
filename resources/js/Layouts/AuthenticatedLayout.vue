@@ -1,10 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import { computed, ref } from 'vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
@@ -15,9 +12,24 @@ const user = computed(() => page.props.auth.user);
 
 const isTutor = computed(() => user.value?.role === 'tutor');
 
+const roleLabel = computed(() =>
+    isTutor.value ? 'Tutor' : 'Student'
+);
+
 const homeRoute = computed(() =>
     isTutor.value ? 'tutor.dashboard' : 'student.dashboard'
 );
+
+const initials = computed(() => {
+    const name = user.value?.name ?? '';
+
+    return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('');
+});
 
 const navigation = computed(() => {
     if (isTutor.value) {
@@ -30,7 +42,7 @@ const navigation = computed(() => {
             {
                 label: 'Students',
                 route: 'tutor.students',
-                active: 'tutor.students',
+                active: 'tutor.students*',
             },
         ];
     }
@@ -44,200 +56,256 @@ const navigation = computed(() => {
         {
             label: 'Assignments',
             route: 'student.assignments',
-            active: 'student.assignments',
+            active: 'student.assignments*',
         },
     ];
 });
+
+const isActive = (pattern) => {
+    return route().current(pattern);
+};
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100">
-            <nav class="border-b border-gray-100 bg-white">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route(homeRoute)">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800"
-                                    />
-                                </Link>
-                            </div>
+    <div class="min-h-screen bg-slate-50 text-slate-900">
 
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
+        <!-- Top navigation -->
+        <header
+            class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur"
+        >
+            <div
+                class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"
+            >
+                <!-- Logo -->
+                <div class="flex items-center gap-8">
+
+                    <Link
+                        :href="route(homeRoute)"
+                        class="flex items-center gap-2"
+                    >
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-5 w-5"
                             >
-                                <NavLink
-                                    v-for="item in navigation"
-                                    :key="item.route"
-                                    :href="route(item.route)"
-                                    :active="route().current(item.active)"
-                                >
-                                    {{ item.label }}
-                                </NavLink>
-                            </div>
-                        </div>
+                                <path d="m3 10 9-5 9 5-9 5Z" />
+                                <path d="M7 12v5c3 2 7 2 10 0v-5" />
+                            </svg>
+                        </span>
 
-                        <!-- User Dropdown -->
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {{ user.name }}
+                        <span
+                            class="text-lg font-semibold tracking-tight text-slate-900"
+                        >
+                            Tutorly
+                        </span>
+                    </Link>
 
-                                                <svg
-                                                    class="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink
-                                            :href="route('profile.edit')"
-                                        >
-                                            Profile
-                                        </DropdownLink>
-
-                                        <DropdownLink
-                                            :href="route('logout')"
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="
-                                    showingNavigationDropdown =
-                                        !showingNavigationDropdown
-                                "
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    class="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex':
-                                                !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex':
-                                                showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{
-                        block: showingNavigationDropdown,
-                        hidden: !showingNavigationDropdown,
-                    }"
-                    class="sm:hidden"
-                >
-                    <div class="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
+                    <!-- Desktop navigation -->
+                    <nav class="hidden items-center gap-1 md:flex">
+                        <Link
                             v-for="item in navigation"
                             :key="item.route"
                             :href="route(item.route)"
-                            :active="route().current(item.active)"
+                            class="rounded-lg px-3 py-2 text-sm font-medium transition"
+                            :class="
+                                isActive(item.active)
+                                    ? 'bg-indigo-50 text-indigo-700'
+                                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                            "
                         >
                             {{ item.label }}
-                        </ResponsiveNavLink>
-                    </div>
+                        </Link>
+                    </nav>
+                </div>
 
-                    <!-- Responsive Settings Options -->
-                    <div class="border-t border-gray-200 pb-1 pt-4">
-                        <div class="px-4">
-                            <div
-                                class="text-base font-medium text-gray-800"
+                <!-- User menu -->
+                <div class="hidden items-center md:flex">
+                    <Dropdown align="right" width="48">
+                        <template #trigger>
+                            <button
+                                type="button"
+                                class="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 transition hover:bg-slate-50"
                             >
-                                {{ user.name }}
+                                <span
+                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white"
+                                >
+                                    {{ initials }}
+                                </span>
+
+                                <span class="text-left leading-tight">
+                                    <span
+                                        class="block max-w-32 truncate text-sm font-medium text-slate-800"
+                                    >
+                                        {{ user.name }}
+                                    </span>
+
+                                    <span class="block text-xs text-slate-500">
+                                        {{ roleLabel }}
+                                    </span>
+                                </span>
+
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    class="h-4 w-4 text-slate-400"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.51a.75.75 0 0 1-1.08 0l-4.25-4.51a.75.75 0 0 1 .02-1.06Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </button>
+                        </template>
+
+                        <template #content>
+                            <div class="border-b border-slate-100 px-4 py-3">
+                                <p
+                                    class="truncate text-sm font-medium text-slate-900"
+                                >
+                                    {{ user.name }}
+                                </p>
+
+                                <p
+                                    class="truncate text-xs text-slate-500"
+                                >
+                                    {{ user.email }}
+                                </p>
                             </div>
 
-                            <div class="text-sm font-medium text-gray-500">
-                                {{ user.email }}
-                            </div>
-                        </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink
+                            <DropdownLink
                                 :href="route('profile.edit')"
                             >
                                 Profile
-                            </ResponsiveNavLink>
+                            </DropdownLink>
 
-                            <ResponsiveNavLink
+                            <DropdownLink
                                 :href="route('logout')"
                                 method="post"
                                 as="button"
                             >
                                 Log Out
-                            </ResponsiveNavLink>
-                        </div>
+                            </DropdownLink>
+                        </template>
+                    </Dropdown>
+                </div>
+
+                <!-- Mobile button -->
+                <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden"
+                    @click="
+                        showingNavigationDropdown =
+                            !showingNavigationDropdown
+                    "
+                >
+                    <svg
+                        v-if="!showingNavigationDropdown"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-6 w-6"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            d="M4 6h16M4 12h16M4 18h16"
+                        />
+                    </svg>
+
+                    <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        class="h-6 w-6"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            d="M6 6l12 12M18 6 6 18"
+                        />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile navigation -->
+            <div
+                v-if="showingNavigationDropdown"
+                class="border-t border-slate-200 bg-white px-4 py-4 md:hidden"
+            >
+                <nav class="space-y-1">
+                    <Link
+                        v-for="item in navigation"
+                        :key="item.route"
+                        :href="route(item.route)"
+                        class="block rounded-lg px-3 py-2 text-sm font-medium"
+                        :class="
+                            isActive(item.active)
+                                ? 'bg-indigo-50 text-indigo-700'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        "
+                    >
+                        {{ item.label }}
+                    </Link>
+                </nav>
+
+                <div
+                    class="mt-4 border-t border-slate-200 pt-4"
+                >
+                    <div class="px-3">
+                        <p class="text-sm font-medium text-slate-900">
+                            {{ user.name }}
+                        </p>
+
+                        <p class="text-xs text-slate-500">
+                            {{ user.email }}
+                        </p>
+                    </div>
+
+                    <div class="mt-3 space-y-1">
+                        <Link
+                            :href="route('profile.edit')"
+                            class="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                        >
+                            Profile
+                        </Link>
+
+                        <Link
+                            :href="route('logout')"
+                            method="post"
+                            as="button"
+                            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
+                        >
+                            Log Out
+                        </Link>
                     </div>
                 </div>
-            </nav>
+            </div>
+        </header>
 
-            <!-- Page Heading -->
-            <header
-                v-if="$slots.header"
-                class="bg-white shadow"
-            >
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header" />
-                </div>
-            </header>
+        <!-- Header slot used by older pages -->
+        <header
+            v-if="$slots.header"
+            class="mx-auto max-w-6xl px-4 pt-8 sm:px-6"
+        >
+            <slot name="header" />
+        </header>
 
-            <!-- Page Content -->
-            <main>
-                <slot />
-            </main>
-        </div>
+        <!-- Page content -->
+        <main>
+            <slot />
+        </main>
     </div>
 </template>
