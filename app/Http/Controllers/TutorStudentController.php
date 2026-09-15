@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Tutor\StoreInvitationRequest;
+use App\Models\Assignment;
 use App\Models\Invitation;
+use App\Models\TutorStudent;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,24 +60,157 @@ class TutorStudentController extends Controller
     {
         $tutor = Auth::user();
 
-        $tutorStudent = $tutor
-            ->students()
-            ->where('users.id', $student->id)
+        /*
+        |--------------------------------------------------------------------------
+        | Make sure this student belongs to this tutor
+        |--------------------------------------------------------------------------
+        */
+
+        $relation = TutorStudent::query()
+            ->where('tutor_id', $tutor->id)
+            ->where('student_id', $student->id)
             ->first();
 
-        if (! $tutorStudent) {
+        if (! $relation) {
             abort(404);
         }
 
-        return Inertia::render('Tutor/StudentProfile', [
-            'student' => [
-                'id' => $student->id,
-                'name' => $student->name,
-                'email' => $student->email,
-            ],
-            'privateNotes' =>
-                $tutorStudent->pivot?->private_notes ?? '',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Subjects
+        |--------------------------------------------------------------------------
+        */
+
+        $subjects = TutorStudent::query()
+            ->where('tutor_id', $tutor->id)
+            ->where('student_id', $student->id)
+            ->pluck('subject')
+            ->filter()
+            ->unique()
+            ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Real assignments
+        |--------------------------------------------------------------------------
+        */
+
+        $assignments = Assignment::query()
+            ->whereHas(
+                'tutorStudent',
+                function ($query) use ($tutor, $student) {
+                    $query
+                        ->where('tutor_id', $tutor->id)
+                        ->where('student_id', $student->id);
+                }
+            )
+            ->with([
+                'tutorStudent',
+                'attachments',
+                'latestSubmission',
+            ])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (Assignment $assignment) {
+                $submission = $assignment->latestSubmission;
+
+                $status = $submission?->status ?? 'todo';
+
+                if (
+                    ! in_array(
+                        $status,
+                        [
+                            'todo',
+                            'awaiting_review',
+                            'graded',
+                        ],
+                        true
+                    )
+                ) {
+                    $status = 'todo';
+                }
+
+                $attachments = $assignment
+                    ->attachments
+                    ->map(fn ($attachment) => [
+                        'id' => $attachment->id,
+
+                        'name' =>
+                            $attachment->original_name
+                            ?: basename($attachment->file_path),
+
+                        'mime_type' =>
+                            $attachment->mime_type,
+
+                        'url' => route(
+                            'assignment.attachments.show',
+                            [
+                                'attachment' =>
+                                    $attachment->id,
+                            ],
+                            false
+                        ),
+                    ])
+                    ->values();
+
+                return [
+                    'id' => $assignment->id,
+
+                    'title' =>
+                        $assignment->title,
+
+                    'instructions' =>
+                        $assignment->instructions,
+
+                    'subject' =>
+                        $assignment
+                            ->tutorStudent
+                            ?->subject,
+
+                    'deadline' =>
+                        $assignment
+                            ->deadline
+                            ?->toIso8601String(),
+
+                    'created_at' =>
+                        $assignment
+                            ->created_at
+                            ?->toIso8601String(),
+
+                    'status' =>
+                        $status,
+
+                    'grade' =>
+                        $submission?->grade,
+
+                    'feedback' =>
+                        $submission?->feedback,
+
+                    'attachments' =>
+                        $attachments,
+                ];
+            })
+            ->values();
+
+        return Inertia::render(
+            'Tutor/StudentProfile',
+            [
+                'student' => [
+                    'id' => $student->id,
+                    'name' => $student->name,
+                    'email' => $student->email,
+                ],
+
+                'privateNotes' =>
+                    $relation->private_notes ?? '',
+
+                'subjects' =>
+                    $subjects,
+
+                'assignments' =>
+                    $assignments,
+            ]
+        );
     }
 
     public function updatePrivateNotes(
@@ -86,7 +221,10 @@ class TutorStudentController extends Controller
 
         $isLinked = $tutor
             ->students()
-            ->where('users.id', $student->id)
+            ->where(
+                'users.id',
+                $student->id
+            )
             ->exists();
 
         if (! $isLinked) {
@@ -107,7 +245,8 @@ class TutorStudentController extends Controller
                 $student->id,
                 [
                     'private_notes' =>
-                        $validated['private_notes'] ?? null,
+                        $validated['private_notes']
+                        ?? null,
                 ]
             );
 
@@ -129,13 +268,19 @@ class TutorStudentController extends Controller
                     Invitation::generateUniqueCode(),
 
                 'student_name' =>
-                    $request->validated('student_name'),
+                    $request->validated(
+                        'student_name'
+                    ),
 
                 'subject' =>
-                    $request->validated('subject'),
+                    $request->validated(
+                        'subject'
+                    ),
 
                 'price' =>
-                    $request->validated('price'),
+                    $request->validated(
+                        'price'
+                    ),
 
                 'status' =>
                     Invitation::STATUS_PENDING,
@@ -163,7 +308,10 @@ class TutorStudentController extends Controller
     ): RedirectResponse {
         $tutor = Auth::user();
 
-        if ($invitation->tutor_id !== $tutor->id) {
+        if (
+            $invitation->tutor_id !==
+            $tutor->id
+        ) {
             abort(404);
         }
 

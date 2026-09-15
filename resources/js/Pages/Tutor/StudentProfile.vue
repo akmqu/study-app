@@ -3,14 +3,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import {
     Head,
     Link,
+    router,
     useForm,
     usePage,
 } from '@inertiajs/vue3';
-
-import {
-    computed,
-    ref,
-} from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     student: {
@@ -42,14 +39,26 @@ const successMessage = computed(
 
 const showHomeworkForm = ref(false);
 
+const deletingAssignmentId = ref(null);
+
+/*
+|--------------------------------------------------------------------------
+| Private notes form
+|--------------------------------------------------------------------------
+*/
+
 const notesForm = useForm({
-    private_notes:
-        props.privateNotes,
+    private_notes: props.privateNotes,
 });
 
+/*
+|--------------------------------------------------------------------------
+| Homework form
+|--------------------------------------------------------------------------
+*/
+
 const homeworkForm = useForm({
-    student_id:
-        props.student.id,
+    student_id: props.student.id,
 
     subject:
         props.subjects.length === 1
@@ -62,10 +71,14 @@ const homeworkForm = useForm({
     attachments: [],
 });
 
+/*
+|--------------------------------------------------------------------------
+| Student initials
+|--------------------------------------------------------------------------
+*/
+
 const initials = computed(() => {
-    return String(
-        props.student.name ?? ''
-    )
+    return String(props.student.name ?? '')
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
@@ -80,7 +93,7 @@ const initials = computed(() => {
 
 /*
 |--------------------------------------------------------------------------
-| Assignment stats
+| Homework stats
 |--------------------------------------------------------------------------
 */
 
@@ -94,8 +107,8 @@ const todoCount = computed(() => {
 const awaitingCount = computed(() => {
     return props.assignments.filter(
         (assignment) =>
-            assignment.status
-            === 'awaiting_review'
+            assignment.status ===
+            'awaiting_review'
     ).length;
 });
 
@@ -107,27 +120,21 @@ const gradedCount = computed(() => {
 });
 
 const averageGrade = computed(() => {
-    const grades =
-        props.assignments
-            .filter(
-                (assignment) =>
-                    assignment.status
-                        === 'graded'
-                    && assignment.grade
-                        !== null
-                    && assignment.grade
-                        !== undefined
-            )
-            .map(
-                (assignment) =>
-                    Number(
-                        assignment.grade
-                    )
-            )
-            .filter(
-                (grade) =>
-                    Number.isFinite(grade)
-            );
+    const grades = props.assignments
+        .filter(
+            (assignment) =>
+                assignment.status === 'graded'
+                && assignment.grade !== null
+                && assignment.grade !== undefined
+        )
+        .map(
+            (assignment) =>
+                Number(assignment.grade)
+        )
+        .filter(
+            (grade) =>
+                Number.isFinite(grade)
+        );
 
     if (!grades.length) {
         return 0;
@@ -135,8 +142,8 @@ const averageGrade = computed(() => {
 
     return Math.round(
         grades.reduce(
-            (sum, grade) =>
-                sum + grade,
+            (total, grade) =>
+                total + grade,
             0
         ) / grades.length
     );
@@ -204,15 +211,14 @@ const isOverdue = (assignment) => {
     }
 
     return (
-        new Date(
-            assignment.deadline
-        ) < new Date()
+        new Date(assignment.deadline) <
+        new Date()
     );
 };
 
 /*
 |--------------------------------------------------------------------------
-| Private notes
+| Save private notes
 |--------------------------------------------------------------------------
 */
 
@@ -234,14 +240,25 @@ const saveNotes = () => {
 
 /*
 |--------------------------------------------------------------------------
-| Homework
+| Homework attachments
+|--------------------------------------------------------------------------
+*/
+
+const handleAttachments = (event) => {
+    homeworkForm.attachments =
+        Array.from(
+            event.target.files ?? []
+        );
+};
+
+/*
+|--------------------------------------------------------------------------
+| Create homework
 |--------------------------------------------------------------------------
 */
 
 const submitHomework = () => {
-    if (
-        homeworkForm.processing
-    ) {
+    if (homeworkForm.processing) {
         return;
     }
 
@@ -261,6 +278,11 @@ const submitHomework = () => {
                     'attachments'
                 );
 
+                homeworkForm.subject =
+                    props.subjects.length === 1
+                        ? props.subjects[0]
+                        : '';
+
                 const input =
                     document.getElementById(
                         'profile-attachments'
@@ -277,13 +299,44 @@ const submitHomework = () => {
     );
 };
 
-const handleAttachments = (
-    event
-) => {
-    homeworkForm.attachments =
-        Array.from(
-            event.target.files ?? []
-        );
+/*
+|--------------------------------------------------------------------------
+| Delete homework
+|--------------------------------------------------------------------------
+*/
+
+const deleteAssignment = (assignment) => {
+    if (
+        deletingAssignmentId.value !== null
+    ) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `Delete "${assignment.title}"?\n\nThe student will no longer see this homework.`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    deletingAssignmentId.value =
+        assignment.id;
+
+    router.delete(
+        route(
+            'tutor.assignments.destroy',
+            assignment.id
+        ),
+        {
+            preserveScroll: true,
+
+            onFinish: () => {
+                deletingAssignmentId.value =
+                    null;
+            },
+        }
+    );
 };
 </script>
 
@@ -327,7 +380,7 @@ const handleAttachments = (
                 {{ successMessage }}
             </div>
 
-            <!-- Header -->
+            <!-- Student header -->
             <section
                 class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
@@ -520,6 +573,7 @@ const handleAttachments = (
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
+                        <!-- Homework header -->
                         <div
                             class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                         >
@@ -553,7 +607,7 @@ const handleAttachments = (
                             </button>
                         </div>
 
-                        <!-- Form -->
+                        <!-- Homework form -->
                         <form
                             v-if="showHomeworkForm"
                             class="mt-6 space-y-4 border-t border-slate-100 pt-5"
@@ -561,83 +615,82 @@ const handleAttachments = (
                                 submitHomework
                             "
                         >
-                            <div
-                                class="grid gap-4 sm:grid-cols-2"
-                            >
-                                <div>
-                                    <label
-                                        class="mb-1.5 block text-sm font-medium text-slate-700"
-                                    >
-                                        Student
-                                    </label>
+                            <!-- Student -->
+                            <div>
+                                <label
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Student
+                                </label>
 
-                                    <input
-                                        :value="
-                                            student.name
-                                        "
-                                        disabled
-                                        type="text"
-                                        class="block w-full rounded-lg border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label
-                                        for="profile-subject"
-                                        class="mb-1.5 block text-sm font-medium text-slate-700"
-                                    >
-                                        Subject
-                                    </label>
-
-                                    <select
-                                        id="profile-subject"
-                                        v-model="
-                                            homeworkForm.subject
-                                        "
-                                        required
-                                        :disabled="
-                                            subjects.length ===
-                                            0
-                                        "
-                                        class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm disabled:opacity-50 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
-                                    >
-                                        <option
-                                            value=""
-                                            disabled
-                                        >
-                                            {{
-                                                subjects.length
-                                                    ? 'Select subject'
-                                                    : 'No subject linked'
-                                            }}
-                                        </option>
-
-                                        <option
-                                            v-for="subject in subjects"
-                                            :key="subject"
-                                            :value="subject"
-                                        >
-                                            {{ subject }}
-                                        </option>
-                                    </select>
-
-                                    <p
-                                        v-if="
-                                            homeworkForm
-                                                .errors
-                                                .subject
-                                        "
-                                        class="mt-1 text-xs text-red-600"
-                                    >
-                                        {{
-                                            homeworkForm
-                                                .errors
-                                                .subject
-                                        }}
-                                    </p>
-                                </div>
+                                <input
+                                    :value="
+                                        student.name
+                                    "
+                                    disabled
+                                    type="text"
+                                    class="block w-full rounded-lg border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500"
+                                />
                             </div>
 
+                            <!-- Subject -->
+                            <div>
+                                <label
+                                    for="profile-subject"
+                                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                                >
+                                    Subject
+                                </label>
+
+                                <select
+                                    id="profile-subject"
+                                    v-model="
+                                        homeworkForm.subject
+                                    "
+                                    required
+                                    :disabled="
+                                        subjects.length ===
+                                        0
+                                    "
+                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                >
+                                    <option
+                                        value=""
+                                        disabled
+                                    >
+                                        {{
+                                            subjects.length
+                                                ? 'Select subject'
+                                                : 'No subject linked'
+                                        }}
+                                    </option>
+
+                                    <option
+                                        v-for="subject in subjects"
+                                        :key="subject"
+                                        :value="subject"
+                                    >
+                                        {{ subject }}
+                                    </option>
+                                </select>
+
+                                <p
+                                    v-if="
+                                        homeworkForm
+                                            .errors
+                                            .subject
+                                    "
+                                    class="mt-1.5 text-xs text-red-600"
+                                >
+                                    {{
+                                        homeworkForm
+                                            .errors
+                                            .subject
+                                    }}
+                                </p>
+                            </div>
+
+                            <!-- Title -->
                             <div>
                                 <label
                                     for="profile-title"
@@ -654,10 +707,26 @@ const handleAttachments = (
                                     type="text"
                                     required
                                     placeholder="e.g. Chapter 5 problem set"
-                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 />
+
+                                <p
+                                    v-if="
+                                        homeworkForm
+                                            .errors
+                                            .title
+                                    "
+                                    class="mt-1.5 text-xs text-red-600"
+                                >
+                                    {{
+                                        homeworkForm
+                                            .errors
+                                            .title
+                                    }}
+                                </p>
                             </div>
 
+                            <!-- Instructions -->
                             <div>
                                 <label
                                     for="profile-instructions"
@@ -673,10 +742,26 @@ const handleAttachments = (
                                     "
                                     rows="4"
                                     placeholder="Describe what the student needs to complete..."
-                                    class="block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                    class="block w-full resize-none rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 ></textarea>
+
+                                <p
+                                    v-if="
+                                        homeworkForm
+                                            .errors
+                                            .instructions
+                                    "
+                                    class="mt-1.5 text-xs text-red-600"
+                                >
+                                    {{
+                                        homeworkForm
+                                            .errors
+                                            .instructions
+                                    }}
+                                </p>
                             </div>
 
+                            <!-- Deadline -->
                             <div>
                                 <label
                                     for="profile-deadline"
@@ -691,10 +776,26 @@ const handleAttachments = (
                                         homeworkForm.deadline
                                     "
                                     type="date"
-                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
                                 />
+
+                                <p
+                                    v-if="
+                                        homeworkForm
+                                            .errors
+                                            .deadline
+                                    "
+                                    class="mt-1.5 text-xs text-red-600"
+                                >
+                                    {{
+                                        homeworkForm
+                                            .errors
+                                            .deadline
+                                    }}
+                                </p>
                             </div>
 
+                            <!-- Attachments -->
                             <div>
                                 <label
                                     for="profile-attachments"
@@ -708,7 +809,7 @@ const handleAttachments = (
                                     type="file"
                                     multiple
                                     accept=".pdf,.doc,.docx"
-                                    class="block w-full rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-white file:px-3 file:py-2 file:text-sm"
+                                    class="block w-full rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-white file:px-3 file:py-2.5 file:text-sm"
                                     @change="
                                         handleAttachments
                                     "
@@ -725,21 +826,40 @@ const handleAttachments = (
                                     <div
                                         v-for="file in homeworkForm.attachments"
                                         :key="
-                                            file.name
+                                            `${file.name}-${file.size}`
                                         "
                                         class="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600"
                                     >
                                         {{ file.name }}
                                     </div>
                                 </div>
+
+                                <p
+                                    v-if="
+                                        homeworkForm
+                                            .errors
+                                            .attachments
+                                    "
+                                    class="mt-1.5 text-xs text-red-600"
+                                >
+                                    {{
+                                        homeworkForm
+                                            .errors
+                                            .attachments
+                                    }}
+                                </p>
                             </div>
 
+                            <!-- Actions -->
                             <div
                                 class="flex justify-end gap-3 border-t border-slate-100 pt-5"
                             >
                                 <button
                                     type="button"
-                                    class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                                    :disabled="
+                                        homeworkForm.processing
+                                    "
+                                    class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                                     @click="
                                         showHomeworkForm =
                                             false
@@ -752,10 +872,10 @@ const handleAttachments = (
                                     type="submit"
                                     :disabled="
                                         homeworkForm.processing
-                                        || subjects.length
-                                            === 0
+                                        || subjects.length ===
+                                            0
                                     "
-                                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                                    class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {{
                                         homeworkForm.processing
@@ -766,11 +886,12 @@ const handleAttachments = (
                             </div>
                         </form>
 
-                        <!-- Real homework list -->
+                        <!-- Empty state -->
                         <div
                             v-if="
-                                assignments.length
-                                === 0
+                                !showHomeworkForm
+                                && assignments.length ===
+                                    0
                             "
                             class="mt-6 flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 px-6 text-center"
                         >
@@ -788,23 +909,26 @@ const handleAttachments = (
                             </p>
                         </div>
 
+                        <!-- Homework list -->
                         <div
-                            v-else
+                            v-if="
+                                assignments.length > 0
+                            "
                             class="mt-6 space-y-3"
                         >
                             <article
                                 v-for="assignment in assignments"
-                                :key="
-                                    assignment.id
-                                "
-                                class="rounded-xl border border-slate-200 p-4"
+                                :key="assignment.id"
+                                class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
                             >
                                 <div
-                                    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                                    class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                                 >
+                                    <!-- Left -->
                                     <div
                                         class="min-w-0 flex-1"
                                     >
+                                        <!-- Badges -->
                                         <div
                                             class="flex flex-wrap items-center gap-2"
                                         >
@@ -846,6 +970,7 @@ const handleAttachments = (
                                             </span>
                                         </div>
 
+                                        <!-- Title -->
                                         <h3
                                             class="mt-3 font-semibold text-slate-900"
                                         >
@@ -854,6 +979,7 @@ const handleAttachments = (
                                             }}
                                         </h3>
 
+                                        <!-- Instructions -->
                                         <p
                                             v-if="
                                                 assignment.instructions
@@ -865,16 +991,48 @@ const handleAttachments = (
                                             }}
                                         </p>
 
-                                        <p
-                                            class="mt-3 text-xs text-slate-400"
-                                        >
-                                            Deadline:
-                                            {{
-                                                formatDate(
-                                                    assignment.deadline
+                                        <!-- Deadline -->
+                                        <div
+                                            class="mt-3 flex items-center gap-2 text-xs"
+                                            :class="
+                                                isOverdue(
+                                                    assignment
                                                 )
-                                            }}
-                                        </p>
+                                                    ? 'text-red-600'
+                                                    : 'text-slate-400'
+                                            "
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="h-4 w-4"
+                                            >
+                                                <rect
+                                                    width="18"
+                                                    height="18"
+                                                    x="3"
+                                                    y="4"
+                                                    rx="2"
+                                                />
+
+                                                <path
+                                                    stroke-linecap="round"
+                                                    d="M16 2v4M8 2v4M3 10h18"
+                                                />
+                                            </svg>
+
+                                            <span>
+                                                Deadline:
+                                                {{
+                                                    formatDate(
+                                                        assignment.deadline
+                                                    )
+                                                }}
+                                            </span>
+                                        </div>
 
                                         <!-- Files -->
                                         <div
@@ -883,58 +1041,134 @@ const handleAttachments = (
                                                     .attachments
                                                     ?.length
                                             "
-                                            class="mt-3 flex flex-wrap gap-2"
+                                            class="mt-4"
                                         >
-                                            <a
-                                                v-for="attachment in assignment.attachments"
-                                                :key="
-                                                    attachment.id
-                                                "
-                                                :href="
-                                                    attachment.url
-                                                "
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700"
+                                            <p
+                                                class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400"
                                             >
-                                                📎
-                                                {{
-                                                    attachment.name
-                                                }}
-                                            </a>
+                                                Attachments
+                                            </p>
+
+                                            <div
+                                                class="flex flex-wrap gap-2"
+                                            >
+                                                <a
+                                                    v-for="attachment in assignment.attachments"
+                                                    :key="
+                                                        attachment.id
+                                                    "
+                                                    :href="
+                                                        attachment.url
+                                                    "
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        class="h-4 w-4"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+                                                        />
+                                                    </svg>
+
+                                                    <span
+                                                        class="max-w-64 truncate"
+                                                    >
+                                                        {{
+                                                            attachment.name
+                                                        }}
+                                                    </span>
+                                                </a>
+                                            </div>
                                         </div>
 
+                                        <!-- Feedback -->
                                         <div
                                             v-if="
                                                 assignment.feedback
                                             "
-                                            class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-800"
+                                            class="mt-4 rounded-lg bg-indigo-50 px-4 py-3"
                                         >
-                                            <span
-                                                class="font-medium"
+                                            <p
+                                                class="text-xs font-medium uppercase tracking-wide text-indigo-600"
                                             >
-                                                Feedback:
-                                            </span>
+                                                Feedback
+                                            </p>
 
-                                            {{
-                                                assignment.feedback
-                                            }}
+                                            <p
+                                                class="mt-1 whitespace-pre-line text-sm text-indigo-900"
+                                            >
+                                                {{
+                                                    assignment.feedback
+                                                }}
+                                            </p>
                                         </div>
                                     </div>
 
+                                    <!-- Right -->
                                     <div
-                                        v-if="
-                                            assignment.grade
-                                                !== null
-                                            && assignment.grade
-                                                !== undefined
-                                        "
-                                        class="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700"
+                                        class="flex shrink-0 flex-col items-stretch gap-2 sm:items-end"
                                     >
-                                        Grade:
-                                        {{
-                                            assignment.grade
-                                        }}
+                                        <!-- Grade -->
+                                        <div
+                                            v-if="
+                                                assignment.grade !==
+                                                    null
+                                                && assignment.grade !==
+                                                    undefined
+                                            "
+                                            class="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700"
+                                        >
+                                            Grade:
+                                            {{
+                                                assignment.grade
+                                            }}
+                                        </div>
+
+                                        <!-- Delete -->
+                                        <button
+                                            type="button"
+                                            :disabled="
+                                                deletingAssignmentId ===
+                                                assignment.id
+                                            "
+                                            class="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            @click="
+                                                deleteAssignment(
+                                                    assignment
+                                                )
+                                            "
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="h-4 w-4"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"
+                                                />
+                                            </svg>
+
+                                            {{
+                                                deletingAssignmentId ===
+                                                assignment.id
+                                                    ? 'Deleting...'
+                                                    : 'Delete'
+                                            }}
+                                        </button>
                                     </div>
                                 </div>
                             </article>
@@ -942,11 +1176,11 @@ const handleAttachments = (
                     </section>
                 </div>
 
-                <!-- Right -->
+                <!-- Right column -->
                 <div
                     class="space-y-6 lg:col-span-2"
                 >
-                    <!-- Notes -->
+                    <!-- Private notes -->
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
@@ -976,7 +1210,7 @@ const handleAttachments = (
                                 notesForm.errors
                                     .private_notes
                             "
-                            class="mt-1 text-xs text-red-600"
+                            class="mt-1.5 text-xs text-red-600"
                         >
                             {{
                                 notesForm.errors
@@ -1000,7 +1234,7 @@ const handleAttachments = (
                         </button>
                     </section>
 
-                    <!-- Details -->
+                    <!-- Student details -->
                     <section
                         class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
