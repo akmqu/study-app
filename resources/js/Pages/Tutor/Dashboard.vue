@@ -1,6 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import {
+    Head,
+    Link,
+    useForm,
+    usePage,
+} from '@inertiajs/vue3';
+
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -30,35 +36,42 @@ const submit = () => {
         return;
     }
 
-    form.post(route('tutor.assignments.store'), {
-        preserveScroll: true,
-        forceFormData: true,
+    form.post(
+        route(
+            'tutor.assignments.store'
+        ),
+        {
+            preserveScroll: true,
+            forceFormData: true,
 
-        onSuccess: () => {
-            form.reset(
-                'student_id',
-                'subject',
-                'title',
-                'instructions',
-                'deadline',
-                'attachments'
-            );
+            onSuccess: () => {
+                form.reset(
+                    'student_id',
+                    'subject',
+                    'title',
+                    'instructions',
+                    'deadline',
+                    'attachments'
+                );
 
-            const input = document.getElementById(
-                'dashboard-attachments'
-            );
+                const input =
+                    document.getElementById(
+                        'dashboard-attachments'
+                    );
 
-            if (input) {
-                input.value = '';
-            }
-        },
-    });
+                if (input) {
+                    input.value = '';
+                }
+            },
+        }
+    );
 };
 
 const handleAttachments = (event) => {
-    form.attachments = Array.from(
-        event.target.files ?? []
-    );
+    form.attachments =
+        Array.from(
+            event.target.files ?? []
+        );
 };
 </script>
 
@@ -67,7 +80,7 @@ const handleAttachments = (event) => {
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-5xl">
-            <!-- Page heading -->
+            <!-- Heading -->
             <header
                 class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
             >
@@ -78,7 +91,9 @@ const handleAttachments = (event) => {
                         Dashboard
                     </h1>
 
-                    <p class="mt-2 text-sm text-slate-500">
+                    <p
+                        class="mt-2 text-sm text-slate-500"
+                    >
                         {{ students.length }}
                         {{
                             students.length === 1
@@ -90,7 +105,11 @@ const handleAttachments = (event) => {
                 </div>
 
                 <Link
-                    :href="route('tutor.students')"
+                    :href="
+                        route(
+                            'tutor.students'
+                        )
+                    "
                     class="text-sm font-medium text-slate-600 transition hover:text-slate-950"
                 >
                     Manage students →
@@ -111,26 +130,21 @@ const handleAttachments = (event) => {
             >
                 <!-- Students -->
                 <section>
-                    <div
-                        class="flex items-center justify-between"
-                    >
-                        <div>
-                            <h2
-                                class="text-base font-semibold text-slate-900"
-                            >
-                                Students
-                            </h2>
+                    <div>
+                        <h2
+                            class="text-base font-semibold text-slate-900"
+                        >
+                            Students
+                        </h2>
 
-                            <p
-                                class="mt-1 text-sm text-slate-500"
-                            >
-                                Students currently connected
-                                to your account.
-                            </p>
-                        </div>
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Students currently connected
+                            to your account.
+                        </p>
                     </div>
 
-                    <!-- Empty -->
                     <div
                         v-if="students.length === 0"
                         class="mt-5 border-t border-slate-200 py-10"
@@ -149,44 +163,45 @@ const handleAttachments = (event) => {
                         </p>
 
                         <Link
-                            :href="route('tutor.students')"
+                            :href="
+                                route(
+                                    'tutor.students'
+                                )
+                            "
                             class="mt-4 inline-block text-sm font-medium text-slate-900 underline underline-offset-4"
                         >
                             Go to students
                         </Link>
                     </div>
 
-                    <!-- List -->
                     <div
                         v-else
                         class="mt-5 border-t border-slate-200"
                     >
-                        <Link
+                        <div
                             v-for="student in students"
                             :key="student.id"
-                            :href="
-                                route(
-                                    'tutor.students.show',
-                                    student.id
-                                )
-                            "
-                            class="group flex items-center justify-between border-b border-slate-200 py-4"
+                            class="border-b border-slate-200 py-4"
                         >
-                            <div>
-                                <p
-                                    class="text-sm font-medium text-slate-900 group-hover:text-slate-600"
-                                >
-                                    {{ student.name }}
-                                </p>
-                            </div>
-
-                            <span
-                                class="text-sm text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-700"
+                            <p
+                                class="text-sm font-medium text-slate-900"
                             >
-                                →
-                            </span>
-                        </Link>
+                                {{ student.name }}
+                            </p>
+                        </div>
                     </div>
+
+                    <Link
+                        v-if="students.length > 0"
+                        :href="
+                            route(
+                                'tutor.students'
+                            )
+                        "
+                        class="mt-5 inline-block text-sm font-medium text-slate-600 hover:text-slate-950"
+                    >
+                        View all students →
+                    </Link>
                 </section>
 
                 <!-- Assignment form -->
@@ -211,7 +226,6 @@ const handleAttachments = (event) => {
                         class="space-y-4"
                         @submit.prevent="submit"
                     >
-                        <!-- Student -->
                         <div>
                             <label
                                 for="student"
@@ -243,14 +257,19 @@ const handleAttachments = (event) => {
                             </select>
 
                             <p
-                                v-if="form.errors.student_id"
+                                v-if="
+                                    form.errors
+                                        .student_id
+                                "
                                 class="mt-1.5 text-xs text-red-600"
                             >
-                                {{ form.errors.student_id }}
+                                {{
+                                    form.errors
+                                        .student_id
+                                }}
                             </p>
                         </div>
 
-                        <!-- Subject -->
                         <div>
                             <label
                                 for="subject"
@@ -294,14 +313,17 @@ const handleAttachments = (event) => {
                             </select>
 
                             <p
-                                v-if="form.errors.subject"
+                                v-if="
+                                    form.errors.subject
+                                "
                                 class="mt-1.5 text-xs text-red-600"
                             >
-                                {{ form.errors.subject }}
+                                {{
+                                    form.errors.subject
+                                }}
                             </p>
                         </div>
 
-                        <!-- Title -->
                         <div>
                             <label
                                 for="title"
@@ -320,14 +342,17 @@ const handleAttachments = (event) => {
                             />
 
                             <p
-                                v-if="form.errors.title"
+                                v-if="
+                                    form.errors.title
+                                "
                                 class="mt-1.5 text-xs text-red-600"
                             >
-                                {{ form.errors.title }}
+                                {{
+                                    form.errors.title
+                                }}
                             </p>
                         </div>
 
-                        <!-- Instructions -->
                         <div>
                             <label
                                 for="instructions"
@@ -338,21 +363,28 @@ const handleAttachments = (event) => {
 
                             <textarea
                                 id="instructions"
-                                v-model="form.instructions"
+                                v-model="
+                                    form.instructions
+                                "
                                 rows="4"
                                 placeholder="What should the student complete?"
                                 class="block w-full resize-none rounded-md border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
                             ></textarea>
 
                             <p
-                                v-if="form.errors.instructions"
+                                v-if="
+                                    form.errors
+                                        .instructions
+                                "
                                 class="mt-1.5 text-xs text-red-600"
                             >
-                                {{ form.errors.instructions }}
+                                {{
+                                    form.errors
+                                        .instructions
+                                }}
                             </p>
                         </div>
 
-                        <!-- Deadline -->
                         <div>
                             <label
                                 for="deadline"
@@ -363,20 +395,27 @@ const handleAttachments = (event) => {
 
                             <input
                                 id="deadline"
-                                v-model="form.deadline"
+                                v-model="
+                                    form.deadline
+                                "
                                 type="date"
                                 class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                             />
 
                             <p
-                                v-if="form.errors.deadline"
+                                v-if="
+                                    form.errors
+                                        .deadline
+                                "
                                 class="mt-1.5 text-xs text-red-600"
                             >
-                                {{ form.errors.deadline }}
+                                {{
+                                    form.errors
+                                        .deadline
+                                }}
                             </p>
                         </div>
 
-                        <!-- Attachments -->
                         <div>
                             <label
                                 for="dashboard-attachments"
@@ -391,7 +430,9 @@ const handleAttachments = (event) => {
                                 multiple
                                 accept=".pdf,.doc,.docx"
                                 class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
-                                @change="handleAttachments"
+                                @change="
+                                    handleAttachments
+                                "
                             />
 
                             <p
@@ -401,7 +442,9 @@ const handleAttachments = (event) => {
                             </p>
 
                             <div
-                                v-if="form.attachments.length"
+                                v-if="
+                                    form.attachments.length
+                                "
                                 class="mt-3 space-y-2"
                             >
                                 <div

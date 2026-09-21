@@ -11,104 +11,337 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+    return Inertia::render(
+        'Welcome',
+        [
+            'canLogin' =>
+                Route::has('login'),
 
-Route::get('/dashboard', function () {
-    $user = auth()->user();
+            'canRegister' =>
+                Route::has('register'),
 
-    if ($user && $user->role === 'tutor') {
-        return redirect()->route('tutor.dashboard');
-    }
+            'laravelVersion' =>
+                Application::VERSION,
 
-    return redirect()->route('student.dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    Route::get(
-    '/assignment-attachments/{attachment}',
-    [AssignmentAttachmentController::class, 'show']
-)
-    ->whereNumber('attachment')
-    ->name('assignment.attachments.show');
-
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
-    Route::get('/dashboard', [TutorController::class, 'dashboard'])
-        ->name('tutor.dashboard');
-
-    Route::get('/calendar', [LessonController::class, 'index'])
-    ->name('tutor.calendar');
-
-    Route::post('/lessons', [LessonController::class, 'store'])
-    ->name('tutor.lessons.store');
-
-    Route::patch('/lessons/{lesson}/complete', [LessonController::class, 'complete'])
-    ->whereNumber('lesson')
-    ->name('tutor.lessons.complete');
-
-    Route::patch('/lessons/{lesson}/cancel', [LessonController::class, 'cancel'])
-    ->whereNumber('lesson')
-    ->name('tutor.lessons.cancel');
-
-    Route::delete('/lessons/{lesson}', [LessonController::class, 'destroy'])
-    ->whereNumber('lesson')
-    ->name('tutor.lessons.destroy');
-
-    Route::post('/assignments', [TutorController::class, 'storeAssignment'])
-        ->name('tutor.assignments.store');
-
-    Route::get(
-    '/assignments',
-    [
-        TutorController::class,
-        'assignments',
-    ]
-)
-    ->name(
-        'tutor.assignments'
+            'phpVersion' =>
+                PHP_VERSION,
+        ]
     );
-
-    Route::delete('/assignments/{assignment}', [TutorController::class, 'destroyAssignment'])
-    ->whereNumber('assignment')
-    ->name('tutor.assignments.destroy');
-
-    Route::get('/students', [TutorStudentController::class, 'index'])
-        ->name('tutor.students');
-
-    Route::get('/students/{student}', [TutorStudentController::class, 'show'])
-        ->whereNumber('student')
-        ->name('tutor.students.show');
-
-    Route::patch('/students/{student}/private-notes', [TutorStudentController::class, 'updatePrivateNotes'])
-    ->whereNumber('student')
-    ->name('tutor.students.private-notes.update');
-
-    Route::delete('/students/{student}', [TutorStudentController::class, 'destroy'])
-        ->whereNumber('student')
-        ->name('tutor.students.destroy');
-
-    Route::post('/invitations', [TutorStudentController::class, 'storeInvitation'])
-        ->name('tutor.invitations.store');
-
-    Route::delete('/invitations/{invitation}', [TutorStudentController::class, 'destroyInvitation'])
-        ->whereNumber('invitation')
-        ->name('tutor.invitations.destroy');
 });
 
-Route::middleware(['auth', 'role:student'])->prefix('student')->group(function () {
-    Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('student.dashboard');
-    Route::post('/invitations/redeem', [StudentController::class, 'redeemInvitation'])->name('student.invitations.redeem');
-    Route::get('/assignments', [StudentController::class, 'assignments'])->name('student.assignments');
-});
+Route::get(
+    '/dashboard',
+    function () {
+        $user = auth()->user();
+
+        if (
+            $user &&
+            $user->role === 'tutor'
+        ) {
+            return redirect()
+                ->route(
+                    'tutor.dashboard'
+                );
+        }
+
+        return redirect()
+            ->route(
+                'student.dashboard'
+            );
+    }
+)
+    ->middleware([
+        'auth',
+        'verified',
+    ])
+    ->name('dashboard');
+
+Route::middleware('auth')
+    ->group(function () {
+        Route::get(
+            '/assignment-attachments/{attachment}',
+            [
+                AssignmentAttachmentController::class,
+                'show',
+            ]
+        )
+            ->whereNumber(
+                'attachment'
+            )
+            ->name(
+                'assignment.attachments.show'
+            );
+
+        Route::get(
+            '/profile',
+            [
+                ProfileController::class,
+                'edit',
+            ]
+        )
+            ->name(
+                'profile.edit'
+            );
+
+        Route::patch(
+            '/profile',
+            [
+                ProfileController::class,
+                'update',
+            ]
+        )
+            ->name(
+                'profile.update'
+            );
+
+        Route::delete(
+            '/profile',
+            [
+                ProfileController::class,
+                'destroy',
+            ]
+        )
+            ->name(
+                'profile.destroy'
+            );
+    });
+
+Route::middleware([
+    'auth',
+    'role:tutor',
+])
+    ->prefix('tutor')
+    ->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/dashboard',
+            [
+                TutorController::class,
+                'dashboard',
+            ]
+        )
+            ->name(
+                'tutor.dashboard'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calendar
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/calendar',
+            [
+                LessonController::class,
+                'index',
+            ]
+        )
+            ->name(
+                'tutor.calendar'
+            );
+
+        Route::post(
+            '/lessons',
+            [
+                LessonController::class,
+                'store',
+            ]
+        )
+            ->name(
+                'tutor.lessons.store'
+            );
+
+        Route::patch(
+            '/lessons/{lesson}/complete',
+            [
+                LessonController::class,
+                'complete',
+            ]
+        )
+            ->whereNumber(
+                'lesson'
+            )
+            ->name(
+                'tutor.lessons.complete'
+            );
+
+        Route::patch(
+            '/lessons/{lesson}/cancel',
+            [
+                LessonController::class,
+                'cancel',
+            ]
+        )
+            ->whereNumber(
+                'lesson'
+            )
+            ->name(
+                'tutor.lessons.cancel'
+            );
+
+        Route::delete(
+            '/lessons/{lesson}',
+            [
+                LessonController::class,
+                'destroy',
+            ]
+        )
+            ->whereNumber(
+                'lesson'
+            )
+            ->name(
+                'tutor.lessons.destroy'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assignments
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/assignments',
+            [
+                TutorController::class,
+                'assignments',
+            ]
+        )
+            ->name(
+                'tutor.assignments'
+            );
+
+        Route::post(
+            '/assignments',
+            [
+                TutorController::class,
+                'storeAssignment',
+            ]
+        )
+            ->name(
+                'tutor.assignments.store'
+            );
+
+        Route::delete(
+            '/assignments/{assignment}',
+            [
+                TutorController::class,
+                'destroyAssignment',
+            ]
+        )
+            ->whereNumber(
+                'assignment'
+            )
+            ->name(
+                'tutor.assignments.destroy'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Students
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/students',
+            [
+                TutorStudentController::class,
+                'index',
+            ]
+        )
+            ->name(
+                'tutor.students'
+            );
+
+        Route::delete(
+            '/students/{student}',
+            [
+                TutorStudentController::class,
+                'destroy',
+            ]
+        )
+            ->whereNumber(
+                'student'
+            )
+            ->name(
+                'tutor.students.destroy'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Invitations
+        |--------------------------------------------------------------------------
+        */
+
+        Route::post(
+            '/invitations',
+            [
+                TutorStudentController::class,
+                'storeInvitation',
+            ]
+        )
+            ->name(
+                'tutor.invitations.store'
+            );
+
+        Route::delete(
+            '/invitations/{invitation}',
+            [
+                TutorStudentController::class,
+                'destroyInvitation',
+            ]
+        )
+            ->whereNumber(
+                'invitation'
+            )
+            ->name(
+                'tutor.invitations.destroy'
+            );
+    });
+
+Route::middleware([
+    'auth',
+    'role:student',
+])
+    ->prefix('student')
+    ->group(function () {
+        Route::get(
+            '/dashboard',
+            [
+                StudentController::class,
+                'dashboard',
+            ]
+        )
+            ->name(
+                'student.dashboard'
+            );
+
+        Route::post(
+            '/invitations/redeem',
+            [
+                StudentController::class,
+                'redeemInvitation',
+            ]
+        )
+            ->name(
+                'student.invitations.redeem'
+            );
+
+        Route::get(
+            '/assignments',
+            [
+                StudentController::class,
+                'assignments',
+            ]
+        )
+            ->name(
+                'student.assignments'
+            );
+    });
 
 require __DIR__.'/auth.php';
