@@ -28,9 +28,15 @@ class StudentController extends Controller
                 'users.email',
             ])
             ->map(fn ($tutor) => [
-                'id' => $tutor->id,
-                'name' => $tutor->name,
-                'email' => $tutor->email,
+                'id' =>
+                    $tutor->id,
+
+                'name' =>
+                    $tutor->name,
+
+                'email' =>
+                    $tutor->email,
+
                 'subject' =>
                     $tutor->pivot?->subject,
             ]);
@@ -50,7 +56,9 @@ class StudentController extends Controller
                 )
                 ->where(function ($query) {
                     $query
-                        ->whereNull('deadline')
+                        ->whereNull(
+                            'deadline'
+                        )
                         ->orWhere(
                             'deadline',
                             '>=',
@@ -85,9 +93,6 @@ class StudentController extends Controller
                 'upcomingAssignments' =>
                     $upcomingAssignments,
 
-                'paymentStatus' =>
-                    'Pending',
-
                 'pendingReviews' =>
                     $pendingReviews,
 
@@ -100,78 +105,107 @@ class StudentController extends Controller
     public function redeemInvitation(
         RedeemInvitationRequest $request
     ): RedirectResponse {
-        $student = $request->user();
+        $student =
+            $request->user();
 
         $normalizedCode =
             Invitation::normalizeCode(
-                $request->validated('code')
+                $request->validated(
+                    'code'
+                )
             );
 
-        DB::transaction(function () use (
-            $student,
-            $normalizedCode
-        ): void {
-            $invitation =
-                Invitation::query()
-                    ->whereRaw(
-                        'UPPER(TRIM(code)) = ?',
-                        [$normalizedCode]
-                    )
-                    ->lockForUpdate()
-                    ->first();
+        DB::transaction(
+            function () use (
+                $student,
+                $normalizedCode
+            ): void {
+                $invitation =
+                    Invitation::query()
+                        ->whereRaw(
+                            'UPPER(TRIM(code)) = ?',
+                            [
+                                $normalizedCode,
+                            ]
+                        )
+                        ->lockForUpdate()
+                        ->first();
 
-            if (
-                ! $invitation
-                || ! $invitation
-                    ->isAcceptableBy($student)
-            ) {
-                throw ValidationException::withMessages([
-                    'code' =>
-                        'That invitation code is not available.',
+                if (
+                    ! $invitation
+                    || ! $invitation
+                        ->isAcceptableBy(
+                            $student
+                        )
+                ) {
+                    throw ValidationException::withMessages([
+                        'code' =>
+                            'That invitation code is not available.',
+                    ]);
+                }
+
+                $tutorIsValid =
+                    User::query()
+                        ->whereKey(
+                            $invitation
+                                ->tutor_id
+                        )
+                        ->where(
+                            'role',
+                            'tutor'
+                        )
+                        ->exists();
+
+                if (! $tutorIsValid) {
+                    throw ValidationException::withMessages([
+                        'code' =>
+                            'That invitation code is not available.',
+                    ]);
+                }
+
+                $invitation->update([
+                    'status' =>
+                        Invitation::STATUS_ACCEPTED,
+
+                    'student_id' =>
+                        $student->id,
                 ]);
+
+                $pivotData = [
+                    'subject' =>
+                        $invitation->subject,
+                ];
+
+                if (
+                    $invitation->price !==
+                    null
+                ) {
+                    $pivotData[
+                        'lesson_price'
+                    ] =
+                        $invitation->price;
+                }
+
+                try {
+                    $student
+                        ->tutors()
+                        ->attach(
+                            $invitation
+                                ->tutor_id,
+                            $pivotData
+                        );
+                } catch (
+                    UniqueConstraintViolationException
+                ) {
+                    // Relation already exists.
+                }
             }
-
-            $tutorIsValid =
-                User::query()
-                    ->whereKey(
-                        $invitation->tutor_id
-                    )
-                    ->where(
-                        'role',
-                        'tutor'
-                    )
-                    ->exists();
-
-            if (! $tutorIsValid) {
-                throw ValidationException::withMessages([
-                    'code' =>
-                        'That invitation code is not available.',
-                ]);
-            }
-
-            $invitation->update([
-                'status' =>
-                    Invitation::STATUS_ACCEPTED,
-
-                'student_id' =>
-                    $student->id,
-            ]);
-
-            try {
-                $student
-                    ->tutors()
-                    ->attach(
-                        $invitation->tutor_id
-                    );
-            } catch (
-                UniqueConstraintViolationException
-            ) {
-                // Relationship already exists.
-            }
-        });
+        );
 
         return redirect()
-            ->route('student.dashboard')
+            ->route(
+                'student.dashboard'
+            )
             ->with(
                 'success',
                 'You are now linked to your tutor.'
@@ -200,8 +234,12 @@ class StudentController extends Controller
                 ->orderByRaw(
                     'CASE WHEN deadline IS NULL THEN 1 ELSE 0 END'
                 )
-                ->orderBy('deadline')
-                ->orderByDesc('created_at')
+                ->orderBy(
+                    'deadline'
+                )
+                ->orderByDesc(
+                    'created_at'
+                )
                 ->get()
                 ->map(
                     function (
@@ -226,7 +264,8 @@ class StudentController extends Controller
                                 true
                             )
                         ) {
-                            $status = 'todo';
+                            $status =
+                                'todo';
                         }
 
                         $attachments =
@@ -235,8 +274,7 @@ class StudentController extends Controller
                                 ->map(
                                     fn ($attachment) => [
                                         'id' =>
-                                            $attachment
-                                                ->id,
+                                            $attachment->id,
 
                                         'name' =>
                                             $attachment
@@ -246,16 +284,13 @@ class StudentController extends Controller
                                             $attachment
                                                 ->mime_type,
 
-                                        /*
-                                         * Relative protected URL.
-                                         * No APP_URL/storage problem.
-                                         */
                                         'url' =>
                                             route(
                                                 'assignment.attachments.show',
                                                 [
                                                     'attachment' =>
-                                                        $attachment->id,
+                                                        $attachment
+                                                            ->id,
                                                 ],
                                                 false
                                             ),
@@ -321,6 +356,42 @@ class StudentController extends Controller
 
                             'attachments' =>
                                 $attachments,
+
+                            'submission' =>
+                                $submission
+                                    ? [
+                                        'id' =>
+                                            $submission
+                                                ->id,
+
+                                        'status' =>
+                                            $submission
+                                                ->status,
+
+                                        'answer' =>
+                                            $submission
+                                                ->student_answer,
+
+                                        'submitted_at' =>
+                                            $submission
+                                                ->created_at
+                                                ?->toIso8601String(),
+
+                                        'file_url' =>
+                                            $submission
+                                                ->student_file_path
+                                                ? route(
+                                                    'submissions.show',
+                                                    [
+                                                        'submission' =>
+                                                            $submission
+                                                                ->id,
+                                                    ],
+                                                    false
+                                                )
+                                                : null,
+                                    ]
+                                    : null,
                         ];
                     }
                 )

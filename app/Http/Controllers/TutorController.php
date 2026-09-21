@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Assignment;
+use App\Models\Lesson;
 use App\Models\TutorStudent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,22 +19,189 @@ class TutorController extends Controller
     {
         $tutor = auth()->user();
 
-        $students = $tutor
-            ->students()
-            ->orderBy('name')
-            ->get([
-                'users.id',
-                'users.name',
-            ])
-            ->map(fn ($student) => [
-                'id' => $student->id,
-                'name' => $student->name,
-            ]);
+        $students =
+            TutorStudent::query()
+                ->where(
+                    'tutor_id',
+                    $tutor->id
+                )
+                ->with(
+                    'student:id,name,email'
+                )
+                ->get()
+                ->groupBy(
+                    'student_id'
+                )
+                ->map(
+                    function (
+                        $relations
+                    ) {
+                        $first =
+                            $relations
+                                ->first();
+
+                        return [
+                            'id' =>
+                                $first
+                                    ->student_id,
+
+                            'name' =>
+                                $first
+                                    ->student
+                                    ->name,
+
+                            'email' =>
+                                $first
+                                    ->student
+                                    ->email,
+
+                            'subjects' =>
+                                $relations
+                                    ->pluck(
+                                        'subject'
+                                    )
+                                    ->filter()
+                                    ->unique()
+                                    ->values(),
+                        ];
+                    }
+                )
+                ->sortBy('name')
+                ->take(5)
+                ->values();
+
+        $upcomingLessons =
+            Lesson::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'tutor_id',
+                            $tutor->id
+                        )
+                )
+                ->where(
+                    'status',
+                    'scheduled'
+                )
+                ->where(
+                    'start_time',
+                    '>=',
+                    now()
+                )
+                ->with([
+                    'tutorStudent.student:id,name',
+                ])
+                ->orderBy(
+                    'start_time'
+                )
+                ->limit(3)
+                ->get()
+                ->map(
+                    fn (
+                        Lesson $lesson
+                    ) => [
+                        'id' =>
+                            $lesson->id,
+
+                        'student_name' =>
+                            $lesson
+                                ->tutorStudent
+                                ->student
+                                ->name,
+
+                        'subject' =>
+                            $lesson
+                                ->tutorStudent
+                                ->subject,
+
+                        'start_time' =>
+                            $lesson
+                                ->start_time
+                                ?->utc()
+                                ->toIso8601String(),
+
+                        'end_time' =>
+                            $lesson
+                                ->end_time
+                                ?->utc()
+                                ->toIso8601String(),
+                    ]
+                );
+
+        $pendingReviews =
+            Assignment::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'tutor_id',
+                            $tutor->id
+                        )
+                )
+                ->whereHas(
+                    'latestSubmission',
+                    fn ($query) =>
+                        $query->where(
+                            'status',
+                            'awaiting_review'
+                        )
+                )
+                ->with([
+                    'tutorStudent.student:id,name',
+                    'latestSubmission',
+                ])
+                ->get()
+                ->sortByDesc(
+                    fn (
+                        Assignment $assignment
+                    ) =>
+                        $assignment
+                            ->latestSubmission
+                            ?->created_at
+                )
+                ->take(3)
+                ->map(
+                    fn (
+                        Assignment $assignment
+                    ) => [
+                        'id' =>
+                            $assignment->id,
+
+                        'title' =>
+                            $assignment->title,
+
+                        'student_name' =>
+                            $assignment
+                                ->tutorStudent
+                                ?->student
+                                ?->name,
+
+                        'subject' =>
+                            $assignment
+                                ->tutorStudent
+                                ?->subject,
+
+                        'submitted_at' =>
+                            $assignment
+                                ->latestSubmission
+                                ?->created_at
+                                ?->toIso8601String(),
+                    ]
+                )
+                ->values();
 
         return Inertia::render(
             'Tutor/Dashboard',
             [
-                'students' => $students,
+                'students' =>
+                    $students,
+
+                'upcomingLessons' =>
+                    $upcomingLessons,
+
+                'pendingReviews' =>
+                    $pendingReviews,
             ]
         );
     }
@@ -41,6 +209,56 @@ class TutorController extends Controller
     public function assignments(): Response
     {
         $tutor = auth()->user();
+
+        $students =
+            TutorStudent::query()
+                ->where(
+                    'tutor_id',
+                    $tutor->id
+                )
+                ->with(
+                    'student:id,name,email'
+                )
+                ->get()
+                ->groupBy(
+                    'student_id'
+                )
+                ->map(
+                    function (
+                        $relations
+                    ) {
+                        $first =
+                            $relations
+                                ->first();
+
+                        return [
+                            'id' =>
+                                $first
+                                    ->student_id,
+
+                            'name' =>
+                                $first
+                                    ->student
+                                    ->name,
+
+                            'email' =>
+                                $first
+                                    ->student
+                                    ->email,
+
+                            'subjects' =>
+                                $relations
+                                    ->pluck(
+                                        'subject'
+                                    )
+                                    ->filter()
+                                    ->unique()
+                                    ->values(),
+                        ];
+                    }
+                )
+                ->sortBy('name')
+                ->values();
 
         $assignments =
             Assignment::query()
@@ -60,8 +278,12 @@ class TutorController extends Controller
                 ->orderByRaw(
                     'CASE WHEN deadline IS NULL THEN 1 ELSE 0 END'
                 )
-                ->orderBy('deadline')
-                ->orderByDesc('created_at')
+                ->orderBy(
+                    'deadline'
+                )
+                ->orderByDesc(
+                    'created_at'
+                )
                 ->get()
                 ->map(
                     function (
@@ -86,7 +308,8 @@ class TutorController extends Controller
                                 true
                             )
                         ) {
-                            $status = 'todo';
+                            $status =
+                                'todo';
                         }
 
                         $attachments =
@@ -95,7 +318,8 @@ class TutorController extends Controller
                                 ->map(
                                     fn ($attachment) => [
                                         'id' =>
-                                            $attachment->id,
+                                            $attachment
+                                                ->id,
 
                                         'name' =>
                                             $attachment
@@ -114,7 +338,8 @@ class TutorController extends Controller
                                                 'assignment.attachments.show',
                                                 [
                                                     'attachment' =>
-                                                        $attachment->id,
+                                                        $attachment
+                                                            ->id,
                                                 ],
                                                 false
                                             ),
@@ -180,6 +405,42 @@ class TutorController extends Controller
 
                             'attachments' =>
                                 $attachments,
+
+                            'submission' =>
+                                $submission
+                                    ? [
+                                        'id' =>
+                                            $submission
+                                                ->id,
+
+                                        'status' =>
+                                            $submission
+                                                ->status,
+
+                                        'answer' =>
+                                            $submission
+                                                ->student_answer,
+
+                                        'submitted_at' =>
+                                            $submission
+                                                ->created_at
+                                                ?->toIso8601String(),
+
+                                        'file_url' =>
+                                            $submission
+                                                ->student_file_path
+                                                ? route(
+                                                    'submissions.show',
+                                                    [
+                                                        'submission' =>
+                                                            $submission
+                                                                ->id,
+                                                    ],
+                                                    false
+                                                )
+                                                : null,
+                                    ]
+                                    : null,
                         ];
                     }
                 )
@@ -190,6 +451,9 @@ class TutorController extends Controller
             [
                 'assignments' =>
                     $assignments,
+
+                'students' =>
+                    $students,
             ]
         );
     }
@@ -197,55 +461,57 @@ class TutorController extends Controller
     public function storeAssignment(
         Request $request
     ): RedirectResponse {
-        $tutor = $request->user();
+        $tutor =
+            $request->user();
 
-        $validated = $request->validate([
-            'student_id' => [
-                'required',
-                'integer',
+        $validated =
+            $request->validate([
+                'student_id' => [
+                    'required',
+                    'integer',
 
-                Rule::exists(
-                    'tutor_student',
-                    'student_id'
-                )->where(
-                    'tutor_id',
-                    $tutor->id
-                ),
-            ],
+                    Rule::exists(
+                        'tutor_student',
+                        'student_id'
+                    )->where(
+                        'tutor_id',
+                        $tutor->id
+                    ),
+                ],
 
-            'subject' => [
-                'required',
-                'string',
-                'max:255',
-            ],
+                'subject' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
 
-            'title' => [
-                'required',
-                'string',
-                'max:255',
-            ],
+                'title' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
 
-            'instructions' => [
-                'nullable',
-                'string',
-            ],
+                'instructions' => [
+                    'nullable',
+                    'string',
+                ],
 
-            'deadline' => [
-                'nullable',
-                'date',
-            ],
+                'deadline' => [
+                    'nullable',
+                    'date',
+                ],
 
-            'attachments' => [
-                'nullable',
-                'array',
-            ],
+                'attachments' => [
+                    'nullable',
+                    'array',
+                ],
 
-            'attachments.*' => [
-                'file',
-                'mimes:pdf,doc,docx',
-                'max:10240',
-            ],
-        ]);
+                'attachments.*' => [
+                    'file',
+                    'mimes:pdf,doc,docx',
+                    'max:10240',
+                ],
+            ]);
 
         $tutorStudent =
             TutorStudent::query()
@@ -255,11 +521,15 @@ class TutorController extends Controller
                 )
                 ->where(
                     'student_id',
-                    $validated['student_id']
+                    $validated[
+                        'student_id'
+                    ]
                 )
                 ->where(
                     'subject',
-                    $validated['subject']
+                    $validated[
+                        'subject'
+                    ]
                 )
                 ->first();
 
@@ -270,58 +540,70 @@ class TutorController extends Controller
             );
         }
 
-        DB::transaction(function () use (
-            $request,
-            $validated,
-            $tutorStudent
-        ): void {
-            $assignment =
-                Assignment::create([
-                    'tutor_student_id' =>
-                        $tutorStudent->id,
+        DB::transaction(
+            function () use (
+                $request,
+                $validated,
+                $tutorStudent
+            ): void {
+                $assignment =
+                    Assignment::create([
+                        'tutor_student_id' =>
+                            $tutorStudent
+                                ->id,
 
-                    'title' =>
-                        $validated['title'],
+                        'title' =>
+                            $validated[
+                                'title'
+                            ],
 
-                    'instructions' =>
-                        $validated['instructions']
-                        ?? null,
+                        'instructions' =>
+                            $validated[
+                                'instructions'
+                            ]
+                            ?? null,
 
-                    'deadline' =>
-                        $validated['deadline']
-                        ?? null,
-                ]);
-
-            foreach (
-                $request->file(
-                    'attachments',
-                    []
-                ) as $file
-            ) {
-                $path = $file->store(
-                    'assignment-attachments',
-                    'public'
-                );
-
-                $assignment
-                    ->attachments()
-                    ->create([
-                        'file_path' =>
-                            $path,
-
-                        'original_name' =>
-                            $file
-                                ->getClientOriginalName(),
-
-                        'mime_type' =>
-                            $file
-                                ->getMimeType(),
+                        'deadline' =>
+                            $validated[
+                                'deadline'
+                            ]
+                            ?? null,
                     ]);
+
+                foreach (
+                    $request->file(
+                        'attachments',
+                        []
+                    ) as $file
+                ) {
+                    $path =
+                        $file->store(
+                            'assignment-attachments',
+                            'public'
+                        );
+
+                    $assignment
+                        ->attachments()
+                        ->create([
+                            'file_path' =>
+                                $path,
+
+                            'original_name' =>
+                                $file
+                                    ->getClientOriginalName(),
+
+                            'mime_type' =>
+                                $file
+                                    ->getMimeType(),
+                        ]);
+                }
             }
-        });
+        );
 
         return redirect()
-            ->back()
+            ->route(
+                'tutor.assignments'
+            )
             ->with(
                 'success',
                 'Homework assigned successfully.'
@@ -350,7 +632,9 @@ class TutorController extends Controller
         $attachmentPaths =
             $assignment
                 ->attachments()
-                ->pluck('file_path')
+                ->pluck(
+                    'file_path'
+                )
                 ->filter()
                 ->values()
                 ->all();
@@ -381,22 +665,34 @@ class TutorController extends Controller
             }
         );
 
-        if (! empty($attachmentPaths)) {
-            Storage::disk('public')
-                ->delete(
-                    $attachmentPaths
-                );
+        if (
+            ! empty(
+                $attachmentPaths
+            )
+        ) {
+            Storage::disk(
+                'public'
+            )->delete(
+                $attachmentPaths
+            );
         }
 
-        if (! empty($submissionPaths)) {
-            Storage::disk('public')
-                ->delete(
-                    $submissionPaths
-                );
+        if (
+            ! empty(
+                $submissionPaths
+            )
+        ) {
+            Storage::disk(
+                'public'
+            )->delete(
+                $submissionPaths
+            );
         }
 
         return redirect()
-            ->back()
+            ->route(
+                'tutor.assignments'
+            )
             ->with(
                 'success',
                 'Homework deleted successfully.'

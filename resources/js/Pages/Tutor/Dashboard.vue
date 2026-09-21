@@ -1,77 +1,67 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+
 import {
     Head,
     Link,
-    useForm,
-    usePage,
 } from '@inertiajs/vue3';
-
-import { computed } from 'vue';
 
 const props = defineProps({
     students: {
         type: Array,
         default: () => [],
     },
+
+    upcomingLessons: {
+        type: Array,
+        default: () => [],
+    },
+
+    pendingReviews: {
+        type: Array,
+        default: () => [],
+    },
 });
 
-const page = usePage();
-
-const successMessage = computed(
-    () => page.props.flash?.success ?? null
-);
-
-const form = useForm({
-    student_id: '',
-    subject: '',
-    title: '',
-    instructions: '',
-    deadline: '',
-    attachments: [],
-});
-
-const submit = () => {
-    if (form.processing) {
-        return;
+const formatLessonTime = (
+    value
+) => {
+    if (!value) {
+        return '';
     }
 
-    form.post(
-        route(
-            'tutor.assignments.store'
-        ),
+    return new Intl.DateTimeFormat(
+        undefined,
         {
-            preserveScroll: true,
-            forceFormData: true,
-
-            onSuccess: () => {
-                form.reset(
-                    'student_id',
-                    'subject',
-                    'title',
-                    'instructions',
-                    'deadline',
-                    'attachments'
-                );
-
-                const input =
-                    document.getElementById(
-                        'dashboard-attachments'
-                    );
-
-                if (input) {
-                    input.value = '';
-                }
-            },
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
         }
+    ).format(
+        new Date(value)
     );
 };
 
-const handleAttachments = (event) => {
-    form.attachments =
-        Array.from(
-            event.target.files ?? []
-        );
+const formatSubmittedTime = (
+    value
+) => {
+    if (!value) {
+        return '';
+    }
+
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }
+    ).format(
+        new Date(value)
+    );
 };
 </script>
 
@@ -79,7 +69,9 @@ const handleAttachments = (event) => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-5xl">
+        <div
+            class="mx-auto max-w-5xl"
+        >
             <!-- Heading -->
             <header
                 class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
@@ -94,42 +86,252 @@ const handleAttachments = (event) => {
                     <p
                         class="mt-2 text-sm text-slate-500"
                     >
-                        {{ students.length }}
-                        {{
-                            students.length === 1
-                                ? 'student'
-                                : 'students'
-                        }}
-                        connected
+                        Your upcoming work
+                        and recent activity.
                     </p>
                 </div>
 
                 <Link
                     :href="
                         route(
-                            'tutor.students'
+                            'tutor.assignments'
                         )
                     "
-                    class="text-sm font-medium text-slate-600 transition hover:text-slate-950"
+                    class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
                 >
-                    Manage students →
+                    + New assignment
                 </Link>
             </header>
 
-            <!-- Success -->
-            <div
-                v-if="successMessage"
-                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            <!-- Upcoming lessons -->
+            <section
+                class="mt-8"
             >
-                {{ successMessage }}
-            </div>
+                <div
+                    class="flex items-center justify-between gap-4"
+                >
+                    <div>
+                        <h2
+                            class="text-base font-semibold text-slate-900"
+                        >
+                            Upcoming lessons
+                        </h2>
 
-            <!-- Content -->
-            <div
-                class="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px]"
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Your next scheduled
+                            lessons.
+                        </p>
+                    </div>
+
+                    <Link
+                        :href="
+                            route(
+                                'tutor.calendar'
+                            )
+                        "
+                        class="text-sm font-medium text-slate-600 hover:text-slate-950"
+                    >
+                        View calendar →
+                    </Link>
+                </div>
+
+                <div
+                    v-if="
+                        upcomingLessons.length
+                    "
+                    class="mt-5 border-t border-slate-200"
+                >
+                    <div
+                        v-for="lesson in upcomingLessons"
+                        :key="
+                            lesson.id
+                        "
+                        class="grid gap-2 border-b border-slate-200 py-4 sm:grid-cols-[180px_minmax(0,1fr)_180px] sm:items-center"
+                    >
+                        <p
+                            class="text-sm font-medium text-slate-900"
+                        >
+                            {{
+                                formatLessonTime(
+                                    lesson.start_time
+                                )
+                            }}
+                        </p>
+
+                        <div
+                            class="min-w-0"
+                        >
+                            <p
+                                class="truncate text-sm font-medium text-slate-900"
+                            >
+                                {{
+                                    lesson.student_name
+                                }}
+                            </p>
+
+                            <p
+                                class="mt-0.5 text-sm text-slate-500"
+                            >
+                                {{
+                                    lesson.subject
+                                }}
+                            </p>
+                        </div>
+
+                        <p
+                            class="text-sm text-slate-500 sm:text-right"
+                        >
+                            Scheduled
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    v-else
+                    class="mt-5 border-t border-slate-200 py-8"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        No upcoming lessons.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Reviews -->
+            <section
+                class="mt-10"
             >
-                <!-- Students -->
-                <section>
+                <div
+                    class="flex items-center justify-between gap-4"
+                >
+                    <div>
+                        <h2
+                            class="text-base font-semibold text-slate-900"
+                        >
+                            Waiting for review
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Submitted homework
+                            that needs your attention.
+                        </p>
+                    </div>
+
+                    <Link
+                        :href="
+                            route(
+                                'tutor.assignments'
+                            )
+                        "
+                        class="text-sm font-medium text-slate-600 hover:text-slate-950"
+                    >
+                        View assignments →
+                    </Link>
+                </div>
+
+                <div
+                    v-if="
+                        pendingReviews.length
+                    "
+                    class="mt-5 border-t border-slate-200"
+                >
+                    <div
+                        v-for="assignment in pendingReviews"
+                        :key="
+                            assignment.id
+                        "
+                        class="grid gap-2 border-b border-slate-200 py-4 sm:grid-cols-[minmax(0,1fr)_180px_170px] sm:items-center"
+                    >
+                        <div
+                            class="min-w-0"
+                        >
+                            <p
+                                class="truncate text-sm font-medium text-slate-900"
+                            >
+                                {{
+                                    assignment.title
+                                }}
+                            </p>
+
+                            <p
+                                class="mt-0.5 text-sm text-slate-500"
+                            >
+                                {{
+                                    assignment.student_name
+                                }}
+
+                                <span
+                                    v-if="
+                                        assignment.subject
+                                    "
+                                    class="mx-1 text-slate-300"
+                                >
+                                    ·
+                                </span>
+
+                                <span
+                                    v-if="
+                                        assignment.subject
+                                    "
+                                >
+                                    {{
+                                        assignment.subject
+                                    }}
+                                </span>
+                            </p>
+                        </div>
+
+                        <p
+                            class="text-sm text-slate-500"
+                        >
+                            {{
+                                formatSubmittedTime(
+                                    assignment.submitted_at
+                                )
+                            }}
+                        </p>
+
+                        <div
+                            class="sm:text-right"
+                        >
+                            <Link
+                                :href="
+                                    route(
+                                        'tutor.assignments'
+                                    )
+                                "
+                                class="text-sm font-medium text-slate-700 hover:text-slate-950"
+                            >
+                                Review →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-else
+                    class="mt-5 border-t border-slate-200 py-8"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        Nothing waiting for review.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Students -->
+            <section
+                class="mt-10"
+            >
+                <div
+                    class="flex items-center justify-between gap-4"
+                >
                     <div>
                         <h2
                             class="text-base font-semibold text-slate-900"
@@ -140,340 +342,79 @@ const handleAttachments = (event) => {
                         <p
                             class="mt-1 text-sm text-slate-500"
                         >
-                            Students currently connected
-                            to your account.
+                            Recently connected
+                            students.
                         </p>
-                    </div>
-
-                    <div
-                        v-if="students.length === 0"
-                        class="mt-5 border-t border-slate-200 py-10"
-                    >
-                        <p
-                            class="text-sm font-medium text-slate-900"
-                        >
-                            No students yet
-                        </p>
-
-                        <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            Invite a student to start
-                            assigning homework.
-                        </p>
-
-                        <Link
-                            :href="
-                                route(
-                                    'tutor.students'
-                                )
-                            "
-                            class="mt-4 inline-block text-sm font-medium text-slate-900 underline underline-offset-4"
-                        >
-                            Go to students
-                        </Link>
-                    </div>
-
-                    <div
-                        v-else
-                        class="mt-5 border-t border-slate-200"
-                    >
-                        <div
-                            v-for="student in students"
-                            :key="student.id"
-                            class="border-b border-slate-200 py-4"
-                        >
-                            <p
-                                class="text-sm font-medium text-slate-900"
-                            >
-                                {{ student.name }}
-                            </p>
-                        </div>
                     </div>
 
                     <Link
-                        v-if="students.length > 0"
                         :href="
                             route(
                                 'tutor.students'
                             )
                         "
-                        class="mt-5 inline-block text-sm font-medium text-slate-600 hover:text-slate-950"
+                        class="text-sm font-medium text-slate-600 hover:text-slate-950"
                     >
                         View all students →
                     </Link>
-                </section>
+                </div>
 
-                <!-- Assignment form -->
-                <section
-                    class="self-start rounded-lg border border-slate-200 p-5"
+                <div
+                    v-if="
+                        students.length
+                    "
+                    class="mt-5 border-t border-slate-200"
                 >
-                    <div class="mb-5">
-                        <h2
-                            class="text-base font-semibold text-slate-900"
+                    <div
+                        v-for="student in students"
+                        :key="
+                            student.id
+                        "
+                        class="grid gap-2 border-b border-slate-200 py-4 sm:grid-cols-[minmax(0,1fr)_260px] sm:items-center"
+                    >
+                        <div
+                            class="min-w-0"
                         >
-                            New assignment
-                        </h2>
+                            <p
+                                class="truncate text-sm font-medium text-slate-900"
+                            >
+                                {{
+                                    student.name
+                                }}
+                            </p>
+
+                            <p
+                                class="mt-0.5 truncate text-sm text-slate-500"
+                            >
+                                {{
+                                    student.email
+                                }}
+                            </p>
+                        </div>
 
                         <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            Create homework for a student.
-                        </p>
-                    </div>
-
-                    <form
-                        class="space-y-4"
-                        @submit.prevent="submit"
-                    >
-                        <div>
-                            <label
-                                for="student"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Student
-                            </label>
-
-                            <select
-                                id="student"
-                                v-model="form.student_id"
-                                required
-                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
-                            >
-                                <option
-                                    value=""
-                                    disabled
-                                >
-                                    Select student
-                                </option>
-
-                                <option
-                                    v-for="student in students"
-                                    :key="student.id"
-                                    :value="student.id"
-                                >
-                                    {{ student.name }}
-                                </option>
-                            </select>
-
-                            <p
-                                v-if="
-                                    form.errors
-                                        .student_id
-                                "
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{
-                                    form.errors
-                                        .student_id
-                                }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label
-                                for="subject"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Subject
-                            </label>
-
-                            <select
-                                id="subject"
-                                v-model="form.subject"
-                                required
-                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
-                            >
-                                <option
-                                    value=""
-                                    disabled
-                                >
-                                    Select subject
-                                </option>
-
-                                <option value="Mathematics">
-                                    Mathematics
-                                </option>
-
-                                <option value="English">
-                                    English
-                                </option>
-
-                                <option value="Physics">
-                                    Physics
-                                </option>
-
-                                <option value="Chemistry">
-                                    Chemistry
-                                </option>
-
-                                <option value="Biology">
-                                    Biology
-                                </option>
-                            </select>
-
-                            <p
-                                v-if="
-                                    form.errors.subject
-                                "
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{
-                                    form.errors.subject
-                                }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label
-                                for="title"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Title
-                            </label>
-
-                            <input
-                                id="title"
-                                v-model="form.title"
-                                type="text"
-                                required
-                                placeholder="Fractions worksheet"
-                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
-                            />
-
-                            <p
-                                v-if="
-                                    form.errors.title
-                                "
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{
-                                    form.errors.title
-                                }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label
-                                for="instructions"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Instructions
-                            </label>
-
-                            <textarea
-                                id="instructions"
-                                v-model="
-                                    form.instructions
-                                "
-                                rows="4"
-                                placeholder="What should the student complete?"
-                                class="block w-full resize-none rounded-md border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
-                            ></textarea>
-
-                            <p
-                                v-if="
-                                    form.errors
-                                        .instructions
-                                "
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{
-                                    form.errors
-                                        .instructions
-                                }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label
-                                for="deadline"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Deadline
-                            </label>
-
-                            <input
-                                id="deadline"
-                                v-model="
-                                    form.deadline
-                                "
-                                type="date"
-                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
-                            />
-
-                            <p
-                                v-if="
-                                    form.errors
-                                        .deadline
-                                "
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{
-                                    form.errors
-                                        .deadline
-                                }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label
-                                for="dashboard-attachments"
-                                class="mb-1.5 block text-sm font-medium text-slate-700"
-                            >
-                                Attachments
-                            </label>
-
-                            <input
-                                id="dashboard-attachments"
-                                type="file"
-                                multiple
-                                accept=".pdf,.doc,.docx"
-                                class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-50"
-                                @change="
-                                    handleAttachments
-                                "
-                            />
-
-                            <p
-                                class="mt-1.5 text-xs text-slate-400"
-                            >
-                                PDF or Word, up to 10 MB.
-                            </p>
-
-                            <div
-                                v-if="
-                                    form.attachments.length
-                                "
-                                class="mt-3 space-y-2"
-                            >
-                                <div
-                                    v-for="file in form.attachments"
-                                    :key="file.name"
-                                    class="truncate text-xs text-slate-600"
-                                >
-                                    {{ file.name }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            :disabled="
-                                form.processing ||
-                                students.length === 0
-                            "
-                            class="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            class="text-sm text-slate-500 sm:text-right"
                         >
                             {{
-                                form.processing
-                                    ? 'Creating...'
-                                    : 'Create assignment'
+                                student.subjects
+                                    ?.join(', ')
+                                || 'No subject'
                             }}
-                        </button>
-                    </form>
-                </section>
-            </div>
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    v-else
+                    class="mt-5 border-t border-slate-200 py-8"
+                >
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        No students connected yet.
+                    </p>
+                </div>
+            </section>
         </div>
     </AuthenticatedLayout>
 </template>

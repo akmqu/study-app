@@ -4,6 +4,7 @@ use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TutorController;
 use App\Http\Controllers\TutorStudentController;
 use Illuminate\Foundation\Application;
@@ -56,6 +57,12 @@ Route::get(
     ])
     ->name('dashboard');
 
+/*
+|--------------------------------------------------------------------------
+| Shared authenticated routes
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth')
     ->group(function () {
         Route::get(
@@ -70,6 +77,30 @@ Route::middleware('auth')
             )
             ->name(
                 'assignment.attachments.show'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Submission file
+        |--------------------------------------------------------------------------
+        |
+        | Both the related tutor and the related student
+        | can open the submitted file.
+        |
+        */
+
+        Route::get(
+            '/submissions/{submission}/file',
+            [
+                SubmissionController::class,
+                'show',
+            ]
+        )
+            ->whereNumber(
+                'submission'
+            )
+            ->name(
+                'submissions.show'
             );
 
         Route::get(
@@ -106,18 +137,18 @@ Route::middleware('auth')
             );
     });
 
+/*
+|--------------------------------------------------------------------------
+| Tutor
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware([
     'auth',
     'role:tutor',
 ])
     ->prefix('tutor')
     ->group(function () {
-        /*
-        |--------------------------------------------------------------------------
-        | Dashboard
-        |--------------------------------------------------------------------------
-        */
-
         Route::get(
             '/dashboard',
             [
@@ -243,6 +274,26 @@ Route::middleware([
 
         /*
         |--------------------------------------------------------------------------
+        | Grade submission
+        |--------------------------------------------------------------------------
+        */
+
+        Route::patch(
+            '/submissions/{submission}/grade',
+            [
+                SubmissionController::class,
+                'grade',
+            ]
+        )
+            ->whereNumber(
+                'submission'
+            )
+            ->name(
+                'tutor.submissions.grade'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
         | Students
         |--------------------------------------------------------------------------
         */
@@ -304,6 +355,12 @@ Route::middleware([
             );
     });
 
+/*
+|--------------------------------------------------------------------------
+| Student
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware([
     'auth',
     'role:student',
@@ -341,6 +398,26 @@ Route::middleware([
         )
             ->name(
                 'student.assignments'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Submit homework
+        |--------------------------------------------------------------------------
+        */
+
+        Route::post(
+            '/assignments/{assignment}/submission',
+            [
+                SubmissionController::class,
+                'store',
+            ]
+        )
+            ->whereNumber(
+                'assignment'
+            )
+            ->name(
+                'student.assignments.submit'
             );
     });
 
