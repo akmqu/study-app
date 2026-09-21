@@ -27,12 +27,6 @@ import '@fullcalendar/vue3/skeleton.css';
 import '@fullcalendar/vue3/themes/classic/theme.css';
 import '@fullcalendar/vue3/themes/classic/palette.css';
 
-/*
-|--------------------------------------------------------------------------
-| Props
-|--------------------------------------------------------------------------
-*/
-
 const props = defineProps({
     lessons: {
         type: Array,
@@ -47,34 +41,20 @@ const props = defineProps({
 
 const page = usePage();
 
+const successMessage = computed(
+    () => page.props.flash?.success ?? null
+);
+
 /*
 |--------------------------------------------------------------------------
-| Browser timezone
+| Timezone
 |--------------------------------------------------------------------------
-|
-| Береться саме timezone комп'ютера користувача.
-|
-| Examples:
-| Europe/Warsaw
-| Europe/Kyiv
-| America/New_York
-|
 */
 
 const browserTimeZone =
     Intl.DateTimeFormat()
         .resolvedOptions()
         .timeZone || 'UTC';
-
-/*
-|--------------------------------------------------------------------------
-| Flash
-|--------------------------------------------------------------------------
-*/
-
-const successMessage = computed(
-    () => page.props.flash?.success ?? null
-);
 
 /*
 |--------------------------------------------------------------------------
@@ -126,7 +106,7 @@ const formatLessonTime = (value) => {
 
 /*
 |--------------------------------------------------------------------------
-| Add lesson form
+| Add lesson
 |--------------------------------------------------------------------------
 */
 
@@ -140,12 +120,6 @@ const lessonForm = useForm({
     end_time: '',
     timezone: browserTimeZone,
 });
-
-/*
-|--------------------------------------------------------------------------
-| Student / subject
-|--------------------------------------------------------------------------
-*/
 
 const selectedStudent = computed(() => {
     return props.students.find(
@@ -171,12 +145,6 @@ watch(
     }
 );
 
-/*
-|--------------------------------------------------------------------------
-| Open lesson form
-|--------------------------------------------------------------------------
-*/
-
 const openLessonModal = (
     startDate = null,
     endDate = null
@@ -185,10 +153,6 @@ const openLessonModal = (
         ? new Date(startDate)
         : new Date();
 
-    /*
-     * Коли натискаємо Add lesson,
-     * беремо найближчу наступну повну годину.
-     */
     if (!startDate) {
         start.setSeconds(0, 0);
         start.setMinutes(0);
@@ -215,11 +179,6 @@ const openLessonModal = (
     lessonForm.end_time =
         formatTimeInput(end);
 
-    /*
-     * Беремо timezone ще раз.
-     * Якщо користувач змінив timezone ОС
-     * під час роботи, отримаємо актуальний.
-     */
     lessonForm.timezone =
         Intl.DateTimeFormat()
             .resolvedOptions()
@@ -244,12 +203,6 @@ const closeLessonModal = () => {
 
     lessonForm.clearErrors();
 };
-
-/*
-|--------------------------------------------------------------------------
-| Submit
-|--------------------------------------------------------------------------
-*/
 
 const submitLesson = () => {
     if (lessonForm.processing) {
@@ -279,17 +232,13 @@ const submitLesson = () => {
 
 /*
 |--------------------------------------------------------------------------
-| Calendar slot interaction
+| Calendar interaction
 |--------------------------------------------------------------------------
 */
 
 const handleDateClick = (info) => {
     const start = new Date(info.date);
 
-    /*
-     * Month view doesn't provide a specific hour.
-     * Use 09:00 as default.
-     */
     if (info.allDay) {
         start.setHours(9, 0, 0, 0);
     }
@@ -318,9 +267,7 @@ const handleSelect = (info) => {
 */
 
 const showLessonDetailsModal = ref(false);
-
 const selectedLesson = ref(null);
-
 const lessonActionProcessing = ref(false);
 
 const openLessonDetails = (info) => {
@@ -345,13 +292,12 @@ const closeLessonDetails = () => {
     }
 
     showLessonDetailsModal.value = false;
-
     selectedLesson.value = null;
 };
 
 /*
 |--------------------------------------------------------------------------
-| Complete
+| Lesson actions
 |--------------------------------------------------------------------------
 */
 
@@ -386,12 +332,6 @@ const markLessonCompleted = () => {
     );
 };
 
-/*
-|--------------------------------------------------------------------------
-| Cancel
-|--------------------------------------------------------------------------
-*/
-
 const cancelLesson = () => {
     if (
         !selectedLesson.value ||
@@ -422,12 +362,6 @@ const cancelLesson = () => {
         }
     );
 };
-
-/*
-|--------------------------------------------------------------------------
-| Delete
-|--------------------------------------------------------------------------
-*/
 
 const deleteLesson = () => {
     if (
@@ -469,36 +403,24 @@ const deleteLesson = () => {
 
 /*
 |--------------------------------------------------------------------------
-| Lesson colours
+| Calendar events
 |--------------------------------------------------------------------------
 */
 
 const getLessonColor = (status) => {
     if (status === 'completed') {
-        return '#10b981';
+        return '#64748b';
     }
 
     if (status === 'cancelled') {
-        return '#94a3b8';
+        return '#cbd5e1';
     }
 
-    /*
-     * scheduled
-     */
-    return '#7c3aed';
+    return '#0f172a';
 };
-
-/*
-|--------------------------------------------------------------------------
-| Calendar events
-|--------------------------------------------------------------------------
-*/
 
 const calendarEvents = computed(() => {
     return props.lessons.map((lesson) => {
-        const color =
-            getLessonColor(lesson.status);
-
         return {
             id: String(lesson.id),
 
@@ -510,11 +432,10 @@ const calendarEvents = computed(() => {
 
             end: lesson.end_time,
 
-            /*
-             * FullCalendar v7 official
-             * per-event styling.
-             */
-            color,
+            color:
+                getLessonColor(
+                    lesson.status
+                ),
 
             contrastColor: '#ffffff',
 
@@ -539,120 +460,8 @@ const calendarEvents = computed(() => {
 
 /*
 |--------------------------------------------------------------------------
-| Today stats
+| Automatic refresh
 |--------------------------------------------------------------------------
-*/
-
-const todayCount = computed(() => {
-    const today =
-        formatDateInput(new Date());
-
-    return props.lessons.filter((lesson) => {
-        if (
-            !lesson.start_time ||
-            lesson.status === 'cancelled'
-        ) {
-            return false;
-        }
-
-        return (
-            formatDateInput(
-                new Date(lesson.start_time)
-            ) === today
-        );
-    }).length;
-});
-
-/*
-|--------------------------------------------------------------------------
-| Week stats
-|--------------------------------------------------------------------------
-*/
-
-const weekCount = computed(() => {
-    const now = new Date();
-
-    const start = new Date(now);
-
-    const day =
-        start.getDay() === 0
-            ? 7
-            : start.getDay();
-
-    start.setDate(
-        start.getDate() - day + 1
-    );
-
-    start.setHours(
-        0,
-        0,
-        0,
-        0
-    );
-
-    const end = new Date(start);
-
-    end.setDate(
-        end.getDate() + 7
-    );
-
-    return props.lessons.filter((lesson) => {
-        if (
-            !lesson.start_time ||
-            lesson.status === 'cancelled'
-        ) {
-            return false;
-        }
-
-        const lessonDate =
-            new Date(lesson.start_time);
-
-        return (
-            lessonDate >= start &&
-            lessonDate < end
-        );
-    }).length;
-});
-
-/*
-|--------------------------------------------------------------------------
-| Completed stats
-|--------------------------------------------------------------------------
-*/
-
-const completedCount = computed(() => {
-    const now = new Date();
-
-    return props.lessons.filter((lesson) => {
-        if (
-            !lesson.start_time ||
-            lesson.status !== 'completed'
-        ) {
-            return false;
-        }
-
-        const lessonDate =
-            new Date(lesson.start_time);
-
-        return (
-            lessonDate.getFullYear() ===
-                now.getFullYear() &&
-            lessonDate.getMonth() ===
-                now.getMonth()
-        );
-    }).length;
-});
-
-/*
-|--------------------------------------------------------------------------
-| Automatic status refresh
-|--------------------------------------------------------------------------
-|
-| Кожну хвилину оновлюємо тільки lessons.
-|
-| Backend при index() перевіряє end_time і автоматично
-| переводить scheduled -> completed.
-|
 */
 
 let lessonRefreshTimer = null;
@@ -692,11 +501,6 @@ const calendarOptions = computed(() => ({
         interactionPlugin,
     ],
 
-    /*
-     * IMPORTANT:
-     *
-     * Browser/computer timezone.
-     */
     timeZone: 'local',
 
     initialView: 'timeGridWeek',
@@ -777,196 +581,91 @@ const calendarOptions = computed(() => ({
     <Head title="Calendar" />
 
     <AuthenticatedLayout>
-        <div
-            class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"
-        >
-            <!-- Page heading -->
-            <div
-                class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        <div class="mx-auto max-w-6xl">
+            <!-- Heading -->
+            <header
+                class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
             >
                 <div>
-                    <p
-                        class="text-sm font-medium text-indigo-600"
-                    >
-                        Tutor workspace
-                    </p>
-
                     <h1
-                        class="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl"
+                        class="text-2xl font-semibold tracking-tight text-slate-950"
                     >
                         Calendar
                     </h1>
 
                     <p
-                        class="mt-1 text-sm text-slate-500"
+                        class="mt-2 text-sm text-slate-500"
                     >
-                        Plan lessons and keep track of your
-                        teaching schedule.
+                        Schedule and manage your lessons.
                     </p>
                 </div>
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700"
+                    class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
                     @click="openLessonModal()"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        class="h-4 w-4"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            d="M12 5v14M5 12h14"
-                        />
-                    </svg>
-
                     Add lesson
                 </button>
-            </div>
+            </header>
 
             <!-- Success -->
             <div
                 v-if="successMessage"
-                class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ successMessage }}
             </div>
 
-            <!-- Stats -->
-            <div
-                class="mb-6 grid gap-4 sm:grid-cols-3"
-            >
-                <div
-                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                    <p
-                        class="text-sm font-medium text-slate-500"
-                    >
-                        Today
-                    </p>
-
-                    <p
-                        class="mt-2 text-2xl font-semibold text-slate-900"
-                    >
-                        {{ todayCount }}
-                    </p>
-
-                    <p
-                        class="mt-1 text-xs text-slate-400"
-                    >
-                        Lessons today
-                    </p>
-                </div>
-
-                <div
-                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                    <p
-                        class="text-sm font-medium text-slate-500"
-                    >
-                        This week
-                    </p>
-
-                    <p
-                        class="mt-2 text-2xl font-semibold text-slate-900"
-                    >
-                        {{ weekCount }}
-                    </p>
-
-                    <p
-                        class="mt-1 text-xs text-slate-400"
-                    >
-                        Lessons this week
-                    </p>
-                </div>
-
-                <div
-                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                    <p
-                        class="text-sm font-medium text-slate-500"
-                    >
-                        Completed
-                    </p>
-
-                    <p
-                        class="mt-2 text-2xl font-semibold text-slate-900"
-                    >
-                        {{ completedCount }}
-                    </p>
-
-                    <p
-                        class="mt-1 text-xs text-slate-400"
-                    >
-                        Lessons this month
-                    </p>
-                </div>
-            </div>
-
             <!-- Calendar -->
-            <section
-                class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-            >
+            <section class="mt-8">
                 <div
-                    class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                 >
-                    <div>
-                        <h2
-                            class="font-medium text-slate-900"
-                        >
-                            Teaching schedule
-                        </h2>
-
-                        <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            Click or drag over a time slot
-                            to schedule a lesson.
-                        </p>
-                    </div>
-
-                    <!-- Legend -->
-                    <div
-                        class="flex flex-wrap items-center gap-4 text-xs text-slate-500"
+                    <p
+                        class="text-sm text-slate-500"
                     >
-                        <div
+                        Click or drag over a time slot to
+                        schedule a lesson.
+                    </p>
+
+                    <div
+                        class="flex items-center gap-4 text-xs text-slate-500"
+                    >
+                        <span
                             class="flex items-center gap-2"
                         >
                             <span
-                                class="h-2.5 w-2.5 rounded-full bg-violet-600"
+                                class="h-2 w-2 rounded-full bg-slate-900"
                             ></span>
 
                             Scheduled
-                        </div>
+                        </span>
 
-                        <div
+                        <span
                             class="flex items-center gap-2"
                         >
                             <span
-                                class="h-2.5 w-2.5 rounded-full bg-emerald-500"
+                                class="h-2 w-2 rounded-full bg-slate-500"
                             ></span>
 
                             Completed
-                        </div>
+                        </span>
 
-                        <div
+                        <span
                             class="flex items-center gap-2"
                         >
                             <span
-                                class="h-2.5 w-2.5 rounded-full bg-slate-400"
+                                class="h-2 w-2 rounded-full bg-slate-300"
                             ></span>
 
                             Cancelled
-                        </div>
+                        </span>
                     </div>
                 </div>
 
                 <div
-                    class="calendar-wrapper overflow-x-auto p-4 sm:p-5"
+                    class="calendar-wrapper overflow-x-auto border-y border-slate-200 py-5"
                 >
                     <div class="min-w-[760px]">
                         <FullCalendar
@@ -989,7 +688,7 @@ const calendarOptions = computed(() => ({
                 >
                     <div>
                         <h2
-                            class="text-lg font-semibold text-slate-900"
+                            class="text-lg font-semibold text-slate-950"
                         >
                             Add lesson
                         </h2>
@@ -1004,22 +703,10 @@ const calendarOptions = computed(() => ({
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        class="text-sm text-slate-500 transition hover:text-slate-950"
                         @click="closeLessonModal"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            class="h-5 w-5"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                d="M6 6l12 12M18 6 6 18"
-                            />
-                        </svg>
+                        Close
                     </button>
                 </div>
 
@@ -1040,7 +727,7 @@ const calendarOptions = computed(() => ({
                             id="lesson-student"
                             v-model="lessonForm.student_id"
                             required
-                            class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                         >
                             <option
                                 value=""
@@ -1080,7 +767,7 @@ const calendarOptions = computed(() => ({
                             v-model="lessonForm.subject"
                             required
                             :disabled="!lessonForm.student_id"
-                            class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
                         >
                             <option
                                 value=""
@@ -1124,7 +811,7 @@ const calendarOptions = computed(() => ({
                             v-model="lessonForm.date"
                             type="date"
                             required
-                            class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                            class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                         />
 
                         <p
@@ -1153,7 +840,7 @@ const calendarOptions = computed(() => ({
                                 type="time"
                                 required
                                 step="900"
-                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                             />
 
                             <p
@@ -1178,7 +865,7 @@ const calendarOptions = computed(() => ({
                                 type="time"
                                 required
                                 step="900"
-                                class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                                class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                             />
 
                             <p
@@ -1190,40 +877,21 @@ const calendarOptions = computed(() => ({
                         </div>
                     </div>
 
-                    <!-- Status -->
-                    <div
-                        class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
+                    <p
+                        class="text-xs text-slate-400"
                     >
-                        <div>
-                            <p
-                                class="text-sm font-medium text-slate-700"
-                            >
-                                Status
-                            </p>
-
-                            <p
-                                class="mt-0.5 text-xs text-slate-400"
-                            >
-                                New lessons are scheduled
-                                automatically.
-                            </p>
-                        </div>
-
-                        <span
-                            class="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"
-                        >
-                            Scheduled
-                        </span>
-                    </div>
+                        Timezone:
+                        {{ browserTimeZone }}
+                    </p>
 
                     <!-- Actions -->
                     <div
-                        class="flex justify-end gap-3 border-t border-slate-100 pt-5"
+                        class="flex justify-end gap-3 border-t border-slate-200 pt-5"
                     >
                         <button
                             type="button"
                             :disabled="lessonForm.processing"
-                            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
                             @click="closeLessonModal"
                         >
                             Cancel
@@ -1232,7 +900,7 @@ const calendarOptions = computed(() => ({
                         <button
                             type="submit"
                             :disabled="lessonForm.processing"
-                            class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {{
                                 lessonForm.processing
@@ -1241,13 +909,6 @@ const calendarOptions = computed(() => ({
                             }}
                         </button>
                     </div>
-
-                    <p
-                        class="text-xs text-slate-400"
-                    >
-                        Timezone:
-                        {{ browserTimeZone }}
-                    </p>
                 </form>
             </div>
         </Modal>
@@ -1268,7 +929,7 @@ const calendarOptions = computed(() => ({
                 >
                     <div>
                         <h2
-                            class="text-lg font-semibold text-slate-900"
+                            class="text-lg font-semibold text-slate-950"
                         >
                             {{ selectedLesson.student_name }}
                         </h2>
@@ -1283,65 +944,62 @@ const calendarOptions = computed(() => ({
                     <button
                         type="button"
                         :disabled="lessonActionProcessing"
-                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                        class="text-sm text-slate-500 transition hover:text-slate-950 disabled:opacity-40"
                         @click="closeLessonDetails"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            class="h-5 w-5"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                d="M6 6l12 12M18 6 6 18"
-                            />
-                        </svg>
+                        Close
                     </button>
                 </div>
 
                 <!-- Details -->
-                <div
-                    class="mt-6 divide-y divide-slate-100 rounded-xl border border-slate-200"
+                <dl
+                    class="mt-6 divide-y divide-slate-200"
                 >
                     <div
-                        class="flex items-center justify-between gap-4 px-4 py-3"
+                        class="flex items-center justify-between gap-4 py-4"
                     >
-                        <span class="text-sm text-slate-500">
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
                             Student
-                        </span>
+                        </dt>
 
-                        <span
+                        <dd
                             class="text-sm font-medium text-slate-900"
                         >
                             {{ selectedLesson.student_name }}
-                        </span>
+                        </dd>
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-4 px-4 py-3"
+                        class="flex items-center justify-between gap-4 py-4"
                     >
-                        <span class="text-sm text-slate-500">
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
                             Subject
-                        </span>
+                        </dt>
 
-                        <span
+                        <dd
                             class="text-sm font-medium text-slate-900"
                         >
-                            {{ selectedLesson.subject || '—' }}
-                        </span>
+                            {{
+                                selectedLesson.subject ||
+                                '—'
+                            }}
+                        </dd>
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-4 px-4 py-3"
+                        class="flex items-center justify-between gap-4 py-4"
                     >
-                        <span class="text-sm text-slate-500">
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
                             Date
-                        </span>
+                        </dt>
 
-                        <span
+                        <dd
                             class="text-right text-sm font-medium text-slate-900"
                         >
                             {{
@@ -1349,17 +1007,19 @@ const calendarOptions = computed(() => ({
                                     selectedLesson.start_time
                                 )
                             }}
-                        </span>
+                        </dd>
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-4 px-4 py-3"
+                        class="flex items-center justify-between gap-4 py-4"
                     >
-                        <span class="text-sm text-slate-500">
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
                             Time
-                        </span>
+                        </dt>
 
-                        <span
+                        <dd
                             class="text-sm font-medium text-slate-900"
                         >
                             {{
@@ -1373,59 +1033,63 @@ const calendarOptions = computed(() => ({
                                     selectedLesson.end_time
                                 )
                             }}
-                        </span>
+                        </dd>
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-4 px-4 py-3"
+                        class="flex items-center justify-between gap-4 py-4"
                     >
-                        <span class="text-sm text-slate-500">
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
                             Status
-                        </span>
+                        </dt>
 
-                        <span
-                            v-if="
-                                selectedLesson.status ===
-                                'scheduled'
-                            "
-                            class="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"
-                        >
-                            Scheduled
-                        </span>
+                        <dd>
+                            <span
+                                v-if="
+                                    selectedLesson.status ===
+                                    'scheduled'
+                                "
+                                class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+                            >
+                                Scheduled
+                            </span>
 
-                        <span
-                            v-else-if="
-                                selectedLesson.status ===
-                                'completed'
-                            "
-                            class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700"
-                        >
-                            Completed
-                        </span>
+                            <span
+                                v-else-if="
+                                    selectedLesson.status ===
+                                    'completed'
+                                "
+                                class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
+                            >
+                                Completed
+                            </span>
 
-                        <span
-                            v-else
-                            class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
-                        >
-                            Cancelled
-                        </span>
+                            <span
+                                v-else
+                                class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500"
+                            >
+                                Cancelled
+                            </span>
+                        </dd>
                     </div>
-                </div>
+                </dl>
 
                 <!-- Actions -->
                 <div
-                    class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                    class="mt-7 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between"
                 >
                     <button
                         type="button"
                         :disabled="lessonActionProcessing"
-                        class="rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        class="text-left text-sm font-medium text-red-600 transition hover:text-red-700 disabled:opacity-40"
                         @click="deleteLesson"
                     >
                         {{
                             lessonActionProcessing
                                 ? 'Working...'
-                                : 'Delete'
+                                : 'Delete lesson'
                         }}
                     </button>
 
@@ -1439,37 +1103,29 @@ const calendarOptions = computed(() => ({
                         <button
                             type="button"
                             :disabled="lessonActionProcessing"
-                            class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
                             @click="cancelLesson"
                         >
-                            {{
-                                lessonActionProcessing
-                                    ? 'Updating...'
-                                    : 'Cancel lesson'
-                            }}
+                            Cancel lesson
                         </button>
 
                         <button
                             type="button"
                             :disabled="lessonActionProcessing"
-                            class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40"
                             @click="markLessonCompleted"
                         >
-                            {{
-                                lessonActionProcessing
-                                    ? 'Updating...'
-                                    : 'Mark completed'
-                            }}
+                            Mark completed
                         </button>
                     </div>
 
-                    <div
+                    <p
                         v-else
                         class="text-sm text-slate-400"
                     >
                         Lesson is
                         {{ selectedLesson.status }}.
-                    </div>
+                    </p>
                 </div>
             </div>
         </Modal>
@@ -1478,7 +1134,7 @@ const calendarOptions = computed(() => ({
 
 <style>
 .tutorly-calendar-toolbar {
-    gap: 1rem;
+    gap: 0.75rem;
     margin-bottom: 1.25rem;
 }
 
@@ -1512,6 +1168,10 @@ const calendarOptions = computed(() => ({
 
 .calendar-wrapper .fc-event {
     cursor: pointer;
+    border-radius: 4px;
+}
+
+.calendar-wrapper button {
     border-radius: 6px;
 }
 </style>

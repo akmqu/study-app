@@ -67,6 +67,17 @@ Route::middleware(['auth', 'role:tutor'])->prefix('tutor')->group(function () {
     Route::post('/assignments', [TutorController::class, 'storeAssignment'])
         ->name('tutor.assignments.store');
 
+    Route::get(
+    '/assignments',
+    [
+        TutorController::class,
+        'assignments',
+    ]
+)
+    ->name(
+        'tutor.assignments'
+    );
+
     Route::delete('/assignments/{assignment}', [TutorController::class, 'destroyAssignment'])
     ->whereNumber('assignment')
     ->name('tutor.assignments.destroy');

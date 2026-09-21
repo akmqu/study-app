@@ -28,12 +28,23 @@ class TutorStudentController extends Controller
                 'users.name',
                 'users.email',
             ])
-            ->map(fn ($student) => [
-                'id' => $student->id,
-                'name' => $student->name,
-                'email' => $student->email,
-                'linked_at' => $student->pivot?->created_at,
-            ]);
+           ->map(fn ($student) => [
+    'id' => $student->id,
+    'name' => $student->name,
+    'email' => $student->email,
+
+    'subject' =>
+        $student->pivot?->subject,
+
+    'lesson_price' =>
+        $student->pivot?->lesson_price,
+
+    'billing_type' =>
+        $student->pivot?->billing_type,
+
+    'linked_at' =>
+        $student->pivot?->created_at,
+]);
 
         $invitations = $tutor
             ->invitations()

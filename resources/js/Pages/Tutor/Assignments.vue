@@ -1,7 +1,16 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+
+import {
+    Head,
+    router,
+    usePage,
+} from '@inertiajs/vue3';
+
+import {
+    computed,
+    ref,
+} from 'vue';
 
 const props = defineProps({
     assignments: {
@@ -10,57 +19,81 @@ const props = defineProps({
     },
 });
 
+const page = usePage();
+
+const successMessage = computed(
+    () =>
+        page.props.flash?.success
+        ?? null
+);
+
 const activeFilter = ref('all');
 const selectedAssignment = ref(null);
+const deletingAssignmentId = ref(null);
 
 const filters = [
     {
         key: 'all',
         label: 'All',
     },
+
     {
         key: 'todo',
         label: 'To do',
     },
+
     {
         key: 'awaiting_review',
         label: 'Awaiting review',
     },
+
     {
         key: 'graded',
         label: 'Graded',
     },
 ];
 
-const filteredAssignments = computed(() => {
-    if (activeFilter.value === 'all') {
-        return props.assignments;
+const filteredAssignments =
+    computed(() => {
+        if (
+            activeFilter.value ===
+            'all'
+        ) {
+            return props.assignments;
+        }
+
+        return props.assignments.filter(
+            (assignment) =>
+                assignment.status ===
+                activeFilter.value
+        );
+    });
+
+const filterCount = (status) => {
+    if (status === 'all') {
+        return props
+            .assignments
+            .length;
     }
 
     return props.assignments.filter(
         (assignment) =>
             assignment.status ===
-            activeFilter.value
-    );
-});
-
-const filterCount = (status) => {
-    if (status === 'all') {
-        return props.assignments.length;
-    }
-
-    return props.assignments.filter(
-        (assignment) =>
-            assignment.status === status
+            status
     ).length;
 };
 
 const statusLabel = (status) => {
-    if (status === 'awaiting_review') {
+    if (
+        status ===
+        'awaiting_review'
+    ) {
         return 'Awaiting review';
     }
 
-    if (status === 'graded') {
+    if (
+        status === 'graded'
+    ) {
         return 'Graded';
     }
 
@@ -68,14 +101,19 @@ const statusLabel = (status) => {
 };
 
 const statusClasses = (status) => {
-    if (status === 'graded') {
+    if (
+        status === 'graded'
+    ) {
         return [
             'bg-emerald-50',
             'text-emerald-700',
         ];
     }
 
-    if (status === 'awaiting_review') {
+    if (
+        status ===
+        'awaiting_review'
+    ) {
         return [
             'bg-amber-50',
             'text-amber-700',
@@ -126,28 +164,78 @@ const formatDateTime = (value) => {
 
 const isOverdue = (assignment) => {
     if (
-        assignment.status !== 'todo' ||
-        !assignment.deadline
+        assignment.status !==
+            'todo'
+        || !assignment.deadline
     ) {
         return false;
     }
 
     return (
-        new Date(assignment.deadline) <
-        new Date()
+        new Date(
+            assignment.deadline
+        ) < new Date()
     );
 };
 
-const attachmentLabel = (attachment) => {
-    return attachment.name || 'Attachment';
-};
-
-const openAssignment = (assignment) => {
-    selectedAssignment.value = assignment;
+const openAssignment = (
+    assignment
+) => {
+    selectedAssignment.value =
+        assignment;
 };
 
 const closeAssignment = () => {
-    selectedAssignment.value = null;
+    if (
+        deletingAssignmentId.value
+    ) {
+        return;
+    }
+
+    selectedAssignment.value =
+        null;
+};
+
+const deleteAssignment = (
+    assignment
+) => {
+    if (
+        deletingAssignmentId.value
+    ) {
+        return;
+    }
+
+    const confirmed =
+        window.confirm(
+            `Delete "${assignment.title}"?`
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    deletingAssignmentId.value =
+        assignment.id;
+
+    router.delete(
+        route(
+            'tutor.assignments.destroy',
+            assignment.id
+        ),
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                selectedAssignment.value =
+                    null;
+            },
+
+            onFinish: () => {
+                deletingAssignmentId.value =
+                    null;
+            },
+        }
+    );
 };
 </script>
 
@@ -155,7 +243,9 @@ const closeAssignment = () => {
     <Head title="Assignments" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-5xl">
+        <div
+            class="mx-auto max-w-5xl"
+        >
             <!-- Heading -->
             <header
                 class="border-b border-slate-200 pb-6"
@@ -169,9 +259,18 @@ const closeAssignment = () => {
                 <p
                     class="mt-2 text-sm text-slate-500"
                 >
-                    Homework from your tutors.
+                    Homework assigned to
+                    your students.
                 </p>
             </header>
+
+            <!-- Success -->
+            <div
+                v-if="successMessage"
+                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            >
+                {{ successMessage }}
+            </div>
 
             <!-- Filters -->
             <div
@@ -183,7 +282,8 @@ const closeAssignment = () => {
                     type="button"
                     class="-mb-px border-b-2 px-3 py-3 text-sm font-medium transition"
                     :class="
-                        activeFilter === filter.key
+                        activeFilter ===
+                        filter.key
                             ? 'border-slate-900 text-slate-950'
                             : 'border-transparent text-slate-500 hover:text-slate-900'
                     "
@@ -209,7 +309,8 @@ const closeAssignment = () => {
             <!-- Empty -->
             <div
                 v-if="
-                    filteredAssignments.length === 0
+                    filteredAssignments.length
+                    === 0
                 "
                 class="py-14"
             >
@@ -222,12 +323,12 @@ const closeAssignment = () => {
                 <p
                     class="mt-1 text-sm text-slate-500"
                 >
-                    There are no assignments in this
-                    category.
+                    There are no assignments
+                    in this category.
                 </p>
             </div>
 
-            <!-- Assignment list -->
+            <!-- List -->
             <div
                 v-else
                 class="border-b border-slate-200"
@@ -236,7 +337,7 @@ const closeAssignment = () => {
                     v-for="assignment in filteredAssignments"
                     :key="assignment.id"
                     type="button"
-                    class="group grid w-full gap-3 border-b border-slate-200 py-5 text-left transition last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_150px_150px_32px] sm:items-center sm:px-3"
+                    class="group grid w-full gap-3 border-b border-slate-200 py-5 text-left transition last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_160px_150px_32px] sm:items-center sm:px-3"
                     @click="
                         openAssignment(
                             assignment
@@ -244,7 +345,9 @@ const closeAssignment = () => {
                     "
                 >
                     <!-- Assignment -->
-                    <div class="min-w-0">
+                    <div
+                        class="min-w-0"
+                    >
                         <div
                             class="flex flex-wrap items-center gap-2"
                         >
@@ -271,20 +374,16 @@ const closeAssignment = () => {
                         <p
                             class="mt-1 truncate text-sm text-slate-500"
                         >
-                            <span
-                                v-if="
-                                    assignment.subject
-                                "
-                            >
-                                {{
-                                    assignment.subject
-                                }}
-                            </span>
+                            {{
+                                assignment
+                                    .student
+                                    ?.name
+                                || 'Unknown student'
+                            }}
 
                             <span
                                 v-if="
-                                    assignment.subject &&
-                                    assignment.tutor?.name
+                                    assignment.subject
                                 "
                                 class="mx-1.5 text-slate-300"
                             >
@@ -293,11 +392,11 @@ const closeAssignment = () => {
 
                             <span
                                 v-if="
-                                    assignment.tutor?.name
+                                    assignment.subject
                                 "
                             >
                                 {{
-                                    assignment.tutor.name
+                                    assignment.subject
                                 }}
                             </span>
                         </p>
@@ -345,25 +444,8 @@ const closeAssignment = () => {
                                 )
                             }}
                         </span>
-
-                        <span
-                            v-if="
-                                assignment.status ===
-                                    'graded' &&
-                                assignment.grade !==
-                                    null &&
-                                assignment.grade !==
-                                    undefined
-                            "
-                            class="ml-2 text-sm font-medium text-slate-700"
-                        >
-                            {{
-                                assignment.grade
-                            }}
-                        </span>
                     </div>
 
-                    <!-- Arrow -->
                     <div
                         class="hidden text-right text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-700 sm:block"
                     >
@@ -373,20 +455,20 @@ const closeAssignment = () => {
             </div>
         </div>
 
-        <!-- Assignment drawer -->
+        <!-- Drawer -->
         <div
             v-if="selectedAssignment"
             class="fixed inset-0 z-50"
         >
-            <!-- Overlay -->
             <button
                 type="button"
                 aria-label="Close assignment"
                 class="absolute inset-0 bg-slate-950/20"
-                @click="closeAssignment"
+                @click="
+                    closeAssignment
+                "
             ></button>
 
-            <!-- Drawer -->
             <aside
                 class="absolute inset-y-0 right-0 w-full max-w-lg overflow-y-auto border-l border-slate-200 bg-white p-6 shadow-xl"
             >
@@ -394,32 +476,31 @@ const closeAssignment = () => {
                 <div
                     class="flex items-start justify-between gap-5"
                 >
-                    <div class="min-w-0">
+                    <div
+                        class="min-w-0"
+                    >
                         <h2
                             class="text-xl font-semibold text-slate-950"
                         >
                             {{
-                                selectedAssignment.title
+                                selectedAssignment
+                                    .title
                             }}
                         </h2>
 
                         <p
                             class="mt-2 text-sm text-slate-500"
                         >
-                            <span
-                                v-if="
-                                    selectedAssignment.subject
-                                "
-                            >
-                                {{
-                                    selectedAssignment.subject
-                                }}
-                            </span>
+                            {{
+                                selectedAssignment
+                                    .student
+                                    ?.name
+                            }}
 
                             <span
                                 v-if="
-                                    selectedAssignment.subject &&
-                                    selectedAssignment.tutor?.name
+                                    selectedAssignment
+                                        .subject
                                 "
                                 class="mx-1.5 text-slate-300"
                             >
@@ -428,12 +509,13 @@ const closeAssignment = () => {
 
                             <span
                                 v-if="
-                                    selectedAssignment.tutor?.name
+                                    selectedAssignment
+                                        .subject
                                 "
                             >
                                 {{
-                                    selectedAssignment.tutor
-                                        .name
+                                    selectedAssignment
+                                        .subject
                                 }}
                             </span>
                         </p>
@@ -442,13 +524,15 @@ const closeAssignment = () => {
                     <button
                         type="button"
                         class="shrink-0 text-sm text-slate-500 transition hover:text-slate-950"
-                        @click="closeAssignment"
+                        @click="
+                            closeAssignment
+                        "
                     >
                         Close
                     </button>
                 </div>
 
-                <!-- Meta -->
+                <!-- Details -->
                 <dl
                     class="mt-8 divide-y divide-slate-200 border-y border-slate-200"
                 >
@@ -466,13 +550,15 @@ const closeAssignment = () => {
                                 class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
                                 :class="
                                     statusClasses(
-                                        selectedAssignment.status
+                                        selectedAssignment
+                                            .status
                                     )
                                 "
                             >
                                 {{
                                     statusLabel(
-                                        selectedAssignment.status
+                                        selectedAssignment
+                                            .status
                                     )
                                 }}
                             </span>
@@ -489,18 +575,12 @@ const closeAssignment = () => {
                         </dt>
 
                         <dd
-                            class="text-right text-sm font-medium"
-                            :class="
-                                isOverdue(
-                                    selectedAssignment
-                                )
-                                    ? 'text-red-600'
-                                    : 'text-slate-900'
-                            "
+                            class="text-right text-sm font-medium text-slate-900"
                         >
                             {{
                                 formatDateTime(
-                                    selectedAssignment.deadline
+                                    selectedAssignment
+                                        .deadline
                                 )
                             }}
                         </dd>
@@ -508,12 +588,11 @@ const closeAssignment = () => {
 
                     <div
                         v-if="
-                            selectedAssignment.status ===
-                                'graded' &&
-                            selectedAssignment.grade !==
-                                null &&
-                            selectedAssignment.grade !==
-                                undefined
+                            selectedAssignment
+                                .grade !== null
+                            &&
+                            selectedAssignment
+                                .grade !== undefined
                         "
                         class="flex items-center justify-between gap-4 py-4"
                     >
@@ -527,7 +606,8 @@ const closeAssignment = () => {
                             class="text-sm font-semibold text-slate-900"
                         >
                             {{
-                                selectedAssignment.grade
+                                selectedAssignment
+                                    .grade
                             }}
                         </dd>
                     </div>
@@ -536,7 +616,8 @@ const closeAssignment = () => {
                 <!-- Instructions -->
                 <section
                     v-if="
-                        selectedAssignment.instructions
+                        selectedAssignment
+                            .instructions
                     "
                     class="mt-8"
                 >
@@ -550,7 +631,8 @@ const closeAssignment = () => {
                         class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600"
                     >
                         {{
-                            selectedAssignment.instructions
+                            selectedAssignment
+                                .instructions
                         }}
                     </p>
                 </section>
@@ -558,7 +640,8 @@ const closeAssignment = () => {
                 <!-- Attachments -->
                 <section
                     v-if="
-                        selectedAssignment.attachments
+                        selectedAssignment
+                            .attachments
                             ?.length
                     "
                     class="mt-8"
@@ -575,8 +658,7 @@ const closeAssignment = () => {
                         <a
                             v-for="attachment in selectedAssignment.attachments"
                             :key="
-                                attachment.id ??
-                                attachment.url
+                                attachment.id
                             "
                             :href="
                                 attachment.url
@@ -584,15 +666,12 @@ const closeAssignment = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             class="flex items-center justify-between gap-4 py-3 text-sm text-slate-700 transition hover:text-slate-950"
-                            @click.stop
                         >
                             <span
                                 class="truncate"
                             >
                                 {{
-                                    attachmentLabel(
-                                        attachment
-                                    )
+                                    attachment.name
                                 }}
                             </span>
 
@@ -608,59 +687,51 @@ const closeAssignment = () => {
                 <!-- Feedback -->
                 <section
                     v-if="
-                        selectedAssignment.feedback
+                        selectedAssignment
+                            .feedback
                     "
                     class="mt-8"
                 >
                     <h3
                         class="text-sm font-semibold text-slate-900"
                     >
-                        Tutor feedback
+                        Feedback
                     </h3>
 
                     <p
                         class="mt-3 whitespace-pre-line border-l-2 border-slate-300 pl-4 text-sm leading-6 text-slate-600"
                     >
                         {{
-                            selectedAssignment.feedback
+                            selectedAssignment
+                                .feedback
                         }}
                     </p>
                 </section>
 
-                <!-- Student action -->
+                <!-- Delete -->
                 <div
                     class="mt-10 border-t border-slate-200 pt-6"
                 >
                     <button
-                        v-if="
-                            selectedAssignment.status ===
-                            'todo'
-                        "
                         type="button"
-                        disabled
-                        class="w-full cursor-not-allowed rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white opacity-40"
-                        title="Submission upload will be connected next"
-                    >
-                        Submit work
-                    </button>
-
-                    <p
-                        v-else-if="
-                            selectedAssignment.status ===
-                            'awaiting_review'
+                        :disabled="
+                            deletingAssignmentId ===
+                            selectedAssignment.id
                         "
-                        class="text-sm text-slate-500"
+                        class="text-sm font-medium text-red-600 transition hover:text-red-700 disabled:opacity-40"
+                        @click="
+                            deleteAssignment(
+                                selectedAssignment
+                            )
+                        "
                     >
-                        Your work was submitted and is
-                        waiting for tutor review.
-                    </p>
-
-                    <p
-                        v-else
-                        class="text-sm text-slate-500"
-                    >
-                        This assignment has been graded.
-                    </p>
+                        {{
+                            deletingAssignmentId ===
+                            selectedAssignment.id
+                                ? 'Deleting...'
+                                : 'Delete assignment'
+                        }}
+                    </button>
                 </div>
             </aside>
         </div>

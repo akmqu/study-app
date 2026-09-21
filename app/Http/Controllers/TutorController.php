@@ -30,14 +30,168 @@ class TutorController extends Controller
                 'name' => $student->name,
             ]);
 
-        return Inertia::render('Tutor/Dashboard', [
-            'stats' => [
-                'activeStudents' => $students->count(),
-                'pendingReviews' => 5,
-            ],
+        return Inertia::render(
+            'Tutor/Dashboard',
+            [
+                'students' => $students,
+            ]
+        );
+    }
 
-            'students' => $students,
-        ]);
+    public function assignments(): Response
+    {
+        $tutor = auth()->user();
+
+        $assignments =
+            Assignment::query()
+                ->whereHas(
+                    'tutorStudent',
+                    fn ($query) =>
+                        $query->where(
+                            'tutor_id',
+                            $tutor->id
+                        )
+                )
+                ->with([
+                    'tutorStudent.student:id,name,email',
+                    'attachments',
+                    'latestSubmission',
+                ])
+                ->orderByRaw(
+                    'CASE WHEN deadline IS NULL THEN 1 ELSE 0 END'
+                )
+                ->orderBy('deadline')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(
+                    function (
+                        Assignment $assignment
+                    ) {
+                        $submission =
+                            $assignment
+                                ->latestSubmission;
+
+                        $status =
+                            $submission?->status
+                            ?? 'todo';
+
+                        if (
+                            ! in_array(
+                                $status,
+                                [
+                                    'todo',
+                                    'awaiting_review',
+                                    'graded',
+                                ],
+                                true
+                            )
+                        ) {
+                            $status = 'todo';
+                        }
+
+                        $attachments =
+                            $assignment
+                                ->attachments
+                                ->map(
+                                    fn ($attachment) => [
+                                        'id' =>
+                                            $attachment->id,
+
+                                        'name' =>
+                                            $attachment
+                                                ->original_name
+                                            ?: basename(
+                                                $attachment
+                                                    ->file_path
+                                            ),
+
+                                        'mime_type' =>
+                                            $attachment
+                                                ->mime_type,
+
+                                        'url' =>
+                                            route(
+                                                'assignment.attachments.show',
+                                                [
+                                                    'attachment' =>
+                                                        $attachment->id,
+                                                ],
+                                                false
+                                            ),
+                                    ]
+                                )
+                                ->values();
+
+                        return [
+                            'id' =>
+                                $assignment->id,
+
+                            'title' =>
+                                $assignment->title,
+
+                            'instructions' =>
+                                $assignment
+                                    ->instructions,
+
+                            'subject' =>
+                                $assignment
+                                    ->tutorStudent
+                                    ?->subject,
+
+                            'student' => [
+                                'id' =>
+                                    $assignment
+                                        ->tutorStudent
+                                        ?->student
+                                        ?->id,
+
+                                'name' =>
+                                    $assignment
+                                        ->tutorStudent
+                                        ?->student
+                                        ?->name,
+
+                                'email' =>
+                                    $assignment
+                                        ->tutorStudent
+                                        ?->student
+                                        ?->email,
+                            ],
+
+                            'deadline' =>
+                                $assignment
+                                    ->deadline
+                                    ?->toIso8601String(),
+
+                            'created_at' =>
+                                $assignment
+                                    ->created_at
+                                    ?->toIso8601String(),
+
+                            'status' =>
+                                $status,
+
+                            'grade' =>
+                                $submission?->grade,
+
+                            'feedback' =>
+                                $submission
+                                    ?->feedback,
+
+                            'attachments' =>
+                                $attachments,
+                        ];
+                    }
+                )
+                ->values();
+
+        return Inertia::render(
+            'Tutor/Assignments',
+            [
+                'assignments' =>
+                    $assignments,
+            ]
+        );
     }
 
     public function storeAssignment(
@@ -93,20 +247,21 @@ class TutorController extends Controller
             ],
         ]);
 
-        $tutorStudent = TutorStudent::query()
-            ->where(
-                'tutor_id',
-                $tutor->id
-            )
-            ->where(
-                'student_id',
-                $validated['student_id']
-            )
-            ->where(
-                'subject',
-                $validated['subject']
-            )
-            ->first();
+        $tutorStudent =
+            TutorStudent::query()
+                ->where(
+                    'tutor_id',
+                    $tutor->id
+                )
+                ->where(
+                    'student_id',
+                    $validated['student_id']
+                )
+                ->where(
+                    'subject',
+                    $validated['subject']
+                )
+                ->first();
 
         if (! $tutorStudent) {
             abort(
@@ -120,21 +275,22 @@ class TutorController extends Controller
             $validated,
             $tutorStudent
         ): void {
-            $assignment = Assignment::create([
-                'tutor_student_id' =>
-                    $tutorStudent->id,
+            $assignment =
+                Assignment::create([
+                    'tutor_student_id' =>
+                        $tutorStudent->id,
 
-                'title' =>
-                    $validated['title'],
+                    'title' =>
+                        $validated['title'],
 
-                'instructions' =>
-                    $validated['instructions']
-                    ?? null,
+                    'instructions' =>
+                        $validated['instructions']
+                        ?? null,
 
-                'deadline' =>
-                    $validated['deadline']
-                    ?? null,
-            ]);
+                    'deadline' =>
+                        $validated['deadline']
+                        ?? null,
+                ]);
 
             foreach (
                 $request->file(
@@ -176,12 +332,6 @@ class TutorController extends Controller
         Request $request,
         Assignment $assignment
     ): RedirectResponse {
-        /*
-        |--------------------------------------------------------------------------
-        | Check ownership
-        |--------------------------------------------------------------------------
-        */
-
         $assignment->loadMissing(
             'tutorStudent'
         );
@@ -197,57 +347,39 @@ class TutorController extends Controller
             403
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Collect tutor attachment paths
-        |--------------------------------------------------------------------------
-        */
-
-        $attachmentPaths = $assignment
-            ->attachments()
-            ->pluck('file_path')
-            ->filter()
-            ->values()
-            ->all();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Collect student submission paths
-        |--------------------------------------------------------------------------
-        */
-
-        $submissionPaths = $assignment
-            ->submissions()
-            ->pluck('student_file_path')
-            ->filter()
-            ->values()
-            ->all();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Delete database records
-        |--------------------------------------------------------------------------
-        */
-
-        DB::transaction(function () use (
-            $assignment
-        ): void {
+        $attachmentPaths =
             $assignment
                 ->attachments()
-                ->delete();
+                ->pluck('file_path')
+                ->filter()
+                ->values()
+                ->all();
 
+        $submissionPaths =
             $assignment
                 ->submissions()
-                ->delete();
+                ->pluck(
+                    'student_file_path'
+                )
+                ->filter()
+                ->values()
+                ->all();
 
-            $assignment->delete();
-        });
+        DB::transaction(
+            function () use (
+                $assignment
+            ): void {
+                $assignment
+                    ->attachments()
+                    ->delete();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Delete physical attachment files
-        |--------------------------------------------------------------------------
-        */
+                $assignment
+                    ->submissions()
+                    ->delete();
+
+                $assignment->delete();
+            }
+        );
 
         if (! empty($attachmentPaths)) {
             Storage::disk('public')
@@ -255,12 +387,6 @@ class TutorController extends Controller
                     $attachmentPaths
                 );
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Delete physical submission files
-        |--------------------------------------------------------------------------
-        */
 
         if (! empty($submissionPaths)) {
             Storage::disk('public')
