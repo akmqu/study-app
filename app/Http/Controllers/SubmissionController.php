@@ -63,13 +63,6 @@ class SubmissionController extends Controller
         |--------------------------------------------------------------------------
         | Validate text answer / file
         |--------------------------------------------------------------------------
-        |
-        | Student may:
-        |
-        | - write only text
-        | - upload only file
-        | - provide both
-        |
         */
 
         $validated =
@@ -87,12 +80,6 @@ class SubmissionController extends Controller
                         'file',
                         'max:10240',
                         'required_without:answer',
-
-                        /*
-                         * DOCX can be detected as ZIP
-                         * by Linux, so we validate
-                         * extension separately.
-                         */
                         'extensions:pdf,doc,docx',
 
                         'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip,application/octet-stream',
@@ -333,12 +320,10 @@ class SubmissionController extends Controller
 
         return Storage::disk(
             'public'
-        )->response(
+        )->download(
             $submission
                 ->student_file_path,
-            $fileName,
-            [],
-            'inline'
+            $fileName
         );
     }
 }

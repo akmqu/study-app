@@ -51,12 +51,10 @@ class AssignmentAttachmentController extends Controller
             404
         );
 
-        return Storage::disk('public')->response(
+        return Storage::disk('public')->download(
             $attachment->file_path,
             $attachment->original_name
-                ?: basename($attachment->file_path),
-            [],
-            'inline'
+                ?: basename($attachment->file_path)
         );
     }
 }
