@@ -1,8 +1,12 @@
 <script setup>
-import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+
+import {
+    Head,
+    Link,
+    useForm,
+} from '@inertiajs/vue3';
 
 defineProps({
     canResetPassword: {
@@ -21,9 +25,15 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
-    });
+    form.post(
+        route('login'),
+        {
+            onFinish: () =>
+                form.reset(
+                    'password'
+                ),
+        }
+    );
 };
 </script>
 
@@ -31,19 +41,17 @@ const submit = () => {
     <GuestLayout>
         <Head title="Log in" />
 
-        <!-- Heading -->
-        <div class="mb-8">
-            <p class="text-sm font-medium text-indigo-600">
-                Welcome back
-            </p>
-
+        <!-- Header -->
+        <div>
             <h1
-                class="mt-1 text-3xl font-semibold tracking-tight text-slate-900"
+                class="text-2xl font-semibold tracking-tight text-slate-950"
             >
-                Log in to Tutorly
+                Log in
             </h1>
 
-            <p class="mt-2 text-sm text-slate-500">
+            <p
+                class="mt-2 text-sm leading-6 text-slate-500"
+            >
                 Enter your account details to continue.
             </p>
         </div>
@@ -51,20 +59,21 @@ const submit = () => {
         <!-- Status -->
         <div
             v-if="status"
-            class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+            class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
             {{ status }}
         </div>
 
+        <!-- Form -->
         <form
-            class="space-y-5"
+            class="mt-6 space-y-5"
             @submit.prevent="submit"
         >
             <!-- Email -->
             <div>
                 <label
                     for="email"
-                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                    class="block text-sm font-medium text-slate-700"
                 >
                     Email address
                 </label>
@@ -77,7 +86,7 @@ const submit = () => {
                     autofocus
                     autocomplete="username"
                     placeholder="you@example.com"
-                    class="block w-full rounded-xl border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-2 block w-full rounded-md border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
                 />
 
                 <InputError
@@ -89,7 +98,7 @@ const submit = () => {
             <!-- Password -->
             <div>
                 <div
-                    class="mb-1.5 flex items-center justify-between"
+                    class="flex items-center justify-between gap-4"
                 >
                     <label
                         for="password"
@@ -100,8 +109,12 @@ const submit = () => {
 
                     <Link
                         v-if="canResetPassword"
-                        :href="route('password.request')"
-                        class="text-xs font-medium text-indigo-600 transition hover:text-indigo-700"
+                        :href="
+                            route(
+                                'password.request'
+                            )
+                        "
+                        class="text-xs font-medium text-slate-500 transition hover:text-slate-950"
                     >
                         Forgot password?
                     </Link>
@@ -114,7 +127,7 @@ const submit = () => {
                     required
                     autocomplete="current-password"
                     placeholder="Enter your password"
-                    class="block w-full rounded-xl border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:ring-indigo-500"
+                    class="mt-2 block w-full rounded-md border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
                 />
 
                 <InputError
@@ -125,46 +138,27 @@ const submit = () => {
 
             <!-- Remember -->
             <label
-                class="flex w-fit cursor-pointer items-center gap-2"
+                class="flex w-fit cursor-pointer items-center gap-2.5"
             >
-                <Checkbox
-                    name="remember"
-                    v-model:checked="form.remember"
+                <input
+                    v-model="form.remember"
+                    type="checkbox"
+                    class="rounded border-slate-300 text-slate-900 focus:ring-slate-500"
                 />
 
-                <span class="text-sm text-slate-600">
+                <span
+                    class="text-sm text-slate-600"
+                >
                     Remember me
                 </span>
             </label>
 
-            <!-- Login -->
+            <!-- Submit -->
             <button
                 type="submit"
                 :disabled="form.processing"
-                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-                <svg
-                    v-if="!form.processing"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="h-4 w-4"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
-                    />
-
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="m10 17 5-5-5-5M15 12H3"
-                    />
-                </svg>
-
                 {{
                     form.processing
                         ? 'Logging in...'
@@ -177,12 +171,18 @@ const submit = () => {
         <div
             class="mt-6 border-t border-slate-200 pt-6 text-center"
         >
-            <p class="text-sm text-slate-500">
+            <p
+                class="text-sm text-slate-500"
+            >
                 Don't have an account?
 
                 <Link
-                    :href="route('register')"
-                    class="font-medium text-indigo-600 transition hover:text-indigo-700"
+                    :href="
+                        route(
+                            'register'
+                        )
+                    "
+                    class="font-medium text-slate-900 hover:underline"
                 >
                     Create an account
                 </Link>

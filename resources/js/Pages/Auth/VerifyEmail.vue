@@ -1,7 +1,13 @@
 <script setup>
 import { computed } from 'vue';
+
 import GuestLayout from '@/Layouts/GuestLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+
+import {
+    Head,
+    Link,
+    useForm,
+} from '@inertiajs/vue3';
 
 const props = defineProps({
     status: {
@@ -11,57 +17,30 @@ const props = defineProps({
 
 const form = useForm({});
 
-const submit = () => {
-    form.post(route('verification.send'));
-};
+const verificationLinkSent =
+    computed(() => {
+        return (
+            props.status ===
+            'verification-link-sent'
+        );
+    });
 
-const verificationLinkSent = computed(
-    () =>
-        props.status ===
-        'verification-link-sent'
-);
+const submit = () => {
+    form.post(
+        route(
+            'verification.send'
+        )
+    );
+};
 </script>
 
 <template>
     <GuestLayout>
         <Head title="Email Verification" />
 
-        <div
-            class="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"
-        >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="h-6 w-6"
-            >
-                <rect
-                    width="20"
-                    height="16"
-                    x="2"
-                    y="4"
-                    rx="2"
-                />
-
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m22 6-10 7L2 6"
-                />
-            </svg>
-        </div>
-
-        <div class="mb-8">
-            <p
-                class="text-sm font-medium text-indigo-600"
-            >
-                One last step
-            </p>
-
+        <div>
             <h1
-                class="mt-1 text-3xl font-semibold tracking-tight text-slate-900"
+                class="text-2xl font-semibold tracking-tight text-slate-950"
             >
                 Verify your email
             </h1>
@@ -69,54 +48,25 @@ const verificationLinkSent = computed(
             <p
                 class="mt-2 text-sm leading-6 text-slate-500"
             >
-                We've sent a verification link to your
-                email address. Open the message and click
-                the link to activate your account.
+                We sent a verification link to your email address.
+                Open the message and follow the link to activate your account.
             </p>
         </div>
 
-        <!-- Success -->
         <div
             v-if="verificationLinkSent"
-            class="mb-5 flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3"
+            class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
-            >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m9 12 2 2 4-4"
-                />
-
-                <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                />
-            </svg>
-
-            <p
-                class="text-sm font-medium text-emerald-700"
-            >
-                A new verification link has been sent
-                to your email address.
-            </p>
+            A new verification link has been sent to your email address.
         </div>
 
         <div
-            class="rounded-xl border border-slate-200 bg-white p-4"
+            class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4"
         >
             <p
-                class="text-sm leading-6 text-slate-500"
+                class="text-sm leading-6 text-slate-600"
             >
-                Didn't receive the email? You can request
-                another verification link.
+                Didn't receive the message? You can request another verification email.
             </p>
 
             <form
@@ -126,7 +76,7 @@ const verificationLinkSent = computed(
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40"
                 >
                     {{
                         form.processing
@@ -141,10 +91,14 @@ const verificationLinkSent = computed(
             class="mt-6 border-t border-slate-200 pt-6 text-center"
         >
             <Link
-                :href="route('logout')"
+                :href="
+                    route(
+                        'logout'
+                    )
+                "
                 method="post"
                 as="button"
-                class="text-sm font-medium text-slate-500 transition hover:text-slate-900"
+                class="text-sm font-medium text-slate-500 hover:text-slate-950"
             >
                 Log out
             </Link>

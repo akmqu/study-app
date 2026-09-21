@@ -1,11 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import DangerButton from '@/Components/DangerButton.vue';
-import InputError from '@/Components/InputError.vue';
-import Modal from '@/Components/Modal.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, nextTick, ref } from 'vue';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     students: {
@@ -30,17 +26,11 @@ const successMessage = computed(
     () => page.props.flash?.success ?? null
 );
 
-const flashedCode = computed(
-    () =>
-        page.props.flash?.generated_code ??
-        props.generatedCode ??
-        null
-);
-
 const showInviteModal = ref(false);
-const nameInput = ref(null);
-
 const selectedStudent = ref(null);
+
+const studentPendingRemoval = ref(null);
+const invitationPendingRemoval = ref(null);
 
 const copyFeedback = ref(null);
 
@@ -50,20 +40,19 @@ const inviteForm = useForm({
     price: '',
 });
 
-const studentPendingRemoval = ref(null);
-const removeError = ref(null);
-const removeForm = useForm({});
+const inviteCode = computed(() => {
+    return (
+        props.generatedCode ??
+        page.props.flash?.generated_code ??
+        null
+    );
+});
 
-const invitationPendingDeletion = ref(null);
-const deleteInvitationError = ref(null);
-const deleteInvitationForm = useForm({});
+const openInviteModal = () => {
+    inviteForm.reset();
+    inviteForm.clearErrors();
 
-const openInviteModal = async () => {
     showInviteModal.value = true;
-
-    await nextTick();
-
-    nameInput.value?.focus();
 };
 
 const closeInviteModal = () => {
@@ -90,17 +79,19 @@ const submitInvitation = () => {
         inviteForm.subject ?? ''
     ).trim();
 
-    inviteForm.post(route('tutor.invitations.store'), {
-        preserveScroll: true,
+    inviteForm.post(
+        route('tutor.invitations.store'),
+        {
+            preserveScroll: true,
 
-        onSuccess: () => {
-            closeInviteModal();
-        },
+            onSuccess: () => {
+                showInviteModal.value = false;
 
-        onError: () => {
-            showInviteModal.value = true;
-        },
-    });
+                inviteForm.reset();
+                inviteForm.clearErrors();
+            },
+        }
+    );
 };
 
 const openStudent = (student) => {
@@ -111,51 +102,20 @@ const closeStudent = () => {
     selectedStudent.value = null;
 };
 
-const copyCode = async (code) => {
-    try {
-        await navigator.clipboard.writeText(code);
-
-        copyFeedback.value = code;
-
-        setTimeout(() => {
-            if (copyFeedback.value === code) {
-                copyFeedback.value = null;
-            }
-        }, 2000);
-    } catch {
-        copyFeedback.value = null;
-    }
-};
-
-const openRemoveModal = (student) => {
-    selectedStudent.value = null;
-
-    removeError.value = null;
-    removeForm.clearErrors();
-
+const requestStudentRemoval = (student) => {
     studentPendingRemoval.value = student;
 };
 
-const closeRemoveModal = () => {
-    if (removeForm.processing) {
-        return;
-    }
-
+const cancelStudentRemoval = () => {
     studentPendingRemoval.value = null;
-    removeError.value = null;
-
-    removeForm.clearErrors();
 };
 
-const confirmRemoveStudent = () => {
-    if (
-        !studentPendingRemoval.value ||
-        removeForm.processing
-    ) {
+const confirmStudentRemoval = () => {
+    if (!studentPendingRemoval.value) {
         return;
     }
 
-    removeForm.delete(
+    router.delete(
         route(
             'tutor.students.destroy',
             studentPendingRemoval.value.id
@@ -164,57 +124,64 @@ const confirmRemoveStudent = () => {
             preserveScroll: true,
 
             onSuccess: () => {
+                selectedStudent.value = null;
                 studentPendingRemoval.value = null;
-            },
-
-            onError: () => {
-                removeError.value =
-                    'Unable to remove this student.';
             },
         }
     );
 };
 
-const openDeleteInvitationModal = (invitation) => {
-    invitationPendingDeletion.value = invitation;
-    deleteInvitationError.value = null;
+const requestInvitationRemoval = (invitation) => {
+    invitationPendingRemoval.value =
+        invitation;
 };
 
-const closeDeleteInvitationModal = () => {
-    if (deleteInvitationForm.processing) {
+const cancelInvitationRemoval = () => {
+    invitationPendingRemoval.value =
+        null;
+};
+
+const confirmInvitationRemoval = () => {
+    if (!invitationPendingRemoval.value) {
         return;
     }
 
-    invitationPendingDeletion.value = null;
-    deleteInvitationError.value = null;
-};
-
-const confirmDeleteInvitation = () => {
-    if (
-        !invitationPendingDeletion.value ||
-        deleteInvitationForm.processing
-    ) {
-        return;
-    }
-
-    deleteInvitationForm.delete(
+    router.delete(
         route(
             'tutor.invitations.destroy',
-            invitationPendingDeletion.value.id
+            invitationPendingRemoval.value.id
         ),
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                invitationPendingDeletion.value = null;
-            },
-
-            onError: () => {
-                deleteInvitationError.value =
-                    'Unable to delete this invitation.';
+                invitationPendingRemoval.value =
+                    null;
             },
         }
     );
+};
+
+const copyCode = async (code) => {
+    try {
+        await navigator.clipboard.writeText(
+            code
+        );
+
+        copyFeedback.value = code;
+
+        window.setTimeout(() => {
+            if (
+                copyFeedback.value ===
+                code
+            ) {
+                copyFeedback.value =
+                    null;
+            }
+        }, 1500);
+    } catch {
+        copyFeedback.value = null;
+    }
 };
 
 const formatDate = (value) => {
@@ -222,11 +189,16 @@ const formatDate = (value) => {
         return '—';
     }
 
-    return new Date(value).toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        }
+    ).format(
+        new Date(value)
+    );
 };
 
 const formatDateTime = (value) => {
@@ -234,13 +206,18 @@ const formatDateTime = (value) => {
         return '—';
     }
 
-    return new Date(value).toLocaleString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }
+    ).format(
+        new Date(value)
+    );
 };
 
 const formatPrice = (value) => {
@@ -252,19 +229,38 @@ const formatPrice = (value) => {
         return '—';
     }
 
-    return `${Number(value).toFixed(2)} zł`;
+    const numericValue =
+        Number(value);
+
+    if (
+        Number.isNaN(
+            numericValue
+        )
+    ) {
+        return value;
+    }
+
+    return new Intl.NumberFormat(
+        'pl-PL',
+        {
+            style: 'currency',
+            currency: 'PLN',
+        }
+    ).format(
+        numericValue
+    );
 };
 
 const formatBilling = (value) => {
-    if (!value) {
-        return '—';
+    if (value === 'per_lesson') {
+        return 'Per lesson';
     }
 
-    return String(value)
-        .replaceAll('_', ' ')
-        .replace(/\b\w/g, (letter) =>
-            letter.toUpperCase()
-        );
+    if (value === 'monthly') {
+        return 'Monthly';
+    }
+
+    return '—';
 };
 </script>
 
@@ -272,10 +268,10 @@ const formatBilling = (value) => {
     <Head title="Students" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-5xl">
-            <!-- Heading -->
+        <div class="mx-auto max-w-6xl">
+            <!-- Header -->
             <header
-                class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
+                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
             >
                 <div>
                     <h1
@@ -284,14 +280,15 @@ const formatBilling = (value) => {
                         Students
                     </h1>
 
-                    <p class="mt-2 text-sm text-slate-500">
+                    <p
+                        class="mt-1.5 text-sm text-slate-500"
+                    >
                         {{ students.length }}
                         {{
                             students.length === 1
-                                ? 'student'
-                                : 'students'
+                                ? 'student connected'
+                                : 'students connected'
                         }}
-                        connected
                     </p>
                 </div>
 
@@ -307,56 +304,87 @@ const formatBilling = (value) => {
             <!-- Success -->
             <div
                 v-if="successMessage"
-                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ successMessage }}
             </div>
 
-            <!-- New invitation -->
-            <div
-                v-if="flashedCode"
-                class="mt-6 flex flex-col gap-4 border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            <!-- Generated invitation -->
+            <section
+                v-if="inviteCode"
+                class="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
             >
-                <div>
-                    <p
-                        class="text-sm font-medium text-slate-900"
+                <div
+                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h2
+                            class="text-sm font-semibold text-slate-900"
+                        >
+                            Invitation created
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Send this code to the student.
+                        </p>
+                    </div>
+
+                    <div
+                        class="flex items-center gap-3"
                     >
-                        Invitation created
-                    </p>
+                        <code
+                            class="rounded-md bg-slate-100 px-3 py-2 font-mono text-base font-semibold tracking-widest text-slate-900"
+                        >
+                            {{ inviteCode }}
+                        </code>
+
+                        <button
+                            type="button"
+                            class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            @click="
+                                copyCode(
+                                    inviteCode
+                                )
+                            "
+                        >
+                            {{
+                                copyFeedback ===
+                                inviteCode
+                                    ? 'Copied'
+                                    : 'Copy'
+                            }}
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Students card -->
+            <section
+                class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            >
+                <div
+                    class="border-b border-slate-200 px-5 py-4"
+                >
+                    <h2
+                        class="text-base font-semibold text-slate-900"
+                    >
+                        Connected students
+                    </h2>
 
                     <p
                         class="mt-1 text-sm text-slate-500"
                     >
-                        Send this code to the student.
+                        Students currently linked to your account.
                     </p>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <span
-                        class="font-mono text-lg font-semibold tracking-widest text-slate-900"
-                    >
-                        {{ flashedCode }}
-                    </span>
-
-                    <button
-                        type="button"
-                        class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        @click="copyCode(flashedCode)"
-                    >
-                        {{
-                            copyFeedback === flashedCode
-                                ? 'Copied'
-                                : 'Copy'
-                        }}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Students -->
-            <section class="mt-8">
                 <div
-                    v-if="students.length === 0"
-                    class="border-y border-slate-200 py-12"
+                    v-if="
+                        students.length === 0
+                    "
+                    class="px-5 py-10"
                 >
                     <p
                         class="text-sm font-medium text-slate-900"
@@ -367,17 +395,8 @@ const formatBilling = (value) => {
                     <p
                         class="mt-1 text-sm text-slate-500"
                     >
-                        Create an invitation code and send it
-                        to your first student.
+                        Invite a student to start managing lessons and assignments.
                     </p>
-
-                    <button
-                        type="button"
-                        class="mt-4 text-sm font-medium text-slate-900 underline underline-offset-4"
-                        @click="openInviteModal"
-                    >
-                        Invite student
-                    </button>
                 </div>
 
                 <div
@@ -385,37 +404,41 @@ const formatBilling = (value) => {
                     class="overflow-x-auto"
                 >
                     <table
-                        class="min-w-full text-left text-sm"
+                        class="min-w-full text-left"
                     >
                         <thead
-                            class="border-b border-slate-200 text-xs text-slate-500"
+                            class="bg-slate-50"
                         >
-                            <tr>
+                            <tr
+                                class="border-b border-slate-200"
+                            >
                                 <th
-                                    class="pb-3 font-medium"
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
                                 >
                                     Name
                                 </th>
 
                                 <th
-                                    class="pb-3 font-medium"
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
                                 >
                                     Subject
                                 </th>
 
                                 <th
-                                    class="pb-3 font-medium"
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
                                 >
                                     Lesson price
                                 </th>
 
                                 <th
-                                    class="pb-3 font-medium"
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
                                 >
                                     Joined
                                 </th>
 
-                                <th class="pb-3"></th>
+                                <th
+                                    class="w-12 px-5 py-3"
+                                ></th>
                             </tr>
                         </thead>
 
@@ -423,12 +446,18 @@ const formatBilling = (value) => {
                             <tr
                                 v-for="student in students"
                                 :key="student.id"
-                                class="cursor-pointer border-b border-slate-200 transition hover:bg-slate-50"
-                                @click="openStudent(student)"
+                                class="cursor-pointer border-b border-slate-100 transition last:border-b-0 hover:bg-slate-50"
+                                @click="
+                                    openStudent(
+                                        student
+                                    )
+                                "
                             >
-                                <td class="py-4 pr-6">
+                                <td
+                                    class="px-5 py-4"
+                                >
                                     <p
-                                        class="font-medium text-slate-900"
+                                        class="text-sm font-medium text-slate-900"
                                     >
                                         {{ student.name }}
                                     </p>
@@ -441,7 +470,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="py-4 pr-6 text-slate-600"
+                                    class="px-5 py-4 text-sm text-slate-600"
                                 >
                                     {{
                                         student.subject ||
@@ -450,7 +479,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="py-4 pr-6 text-slate-600"
+                                    class="px-5 py-4 text-sm text-slate-600"
                                 >
                                     {{
                                         formatPrice(
@@ -460,7 +489,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="whitespace-nowrap py-4 pr-6 text-slate-500"
+                                    class="px-5 py-4 text-sm text-slate-500"
                                 >
                                     {{
                                         formatDate(
@@ -470,7 +499,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="py-4 text-right text-slate-400"
+                                    class="px-5 py-4 text-right text-slate-400"
                                 >
                                     →
                                 </td>
@@ -480,10 +509,12 @@ const formatBilling = (value) => {
                 </div>
             </section>
 
-            <!-- Active invitations -->
-            <section class="mt-12">
+            <!-- Invitations card -->
+            <section
+                class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            >
                 <div
-                    class="flex items-end justify-between border-b border-slate-200 pb-3"
+                    class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4"
                 >
                     <div>
                         <h2
@@ -500,17 +531,19 @@ const formatBilling = (value) => {
                     </div>
 
                     <span
-                        class="text-sm text-slate-500"
+                        class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
                     >
                         {{ invitations.length }}
                     </span>
                 </div>
 
                 <div
-                    v-if="invitations.length === 0"
-                    class="py-8 text-sm text-slate-500"
+                    v-if="
+                        invitations.length === 0
+                    "
+                    class="px-5 py-10 text-sm text-slate-500"
                 >
-                    No active invitations.
+                    No active invitation codes.
                 </div>
 
                 <div
@@ -518,24 +551,62 @@ const formatBilling = (value) => {
                     class="overflow-x-auto"
                 >
                     <table
-                        class="min-w-full text-left text-sm"
+                        class="min-w-full text-left"
                     >
+                        <thead
+                            class="bg-slate-50"
+                        >
+                            <tr
+                                class="border-b border-slate-200"
+                            >
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Code
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Student
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Subject
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Expires
+                                </th>
+
+                                <th
+                                    class="px-5 py-3"
+                                ></th>
+                            </tr>
+                        </thead>
+
                         <tbody>
                             <tr
                                 v-for="invitation in invitations"
                                 :key="invitation.id"
-                                class="border-b border-slate-200"
+                                class="border-b border-slate-100 last:border-b-0"
                             >
-                                <td class="py-4 pr-6">
-                                    <span
-                                        class="font-mono font-semibold tracking-wider text-slate-900"
+                                <td
+                                    class="px-5 py-4"
+                                >
+                                    <code
+                                        class="font-mono text-sm font-semibold tracking-wider text-slate-900"
                                     >
                                         {{ invitation.code }}
-                                    </span>
+                                    </code>
                                 </td>
 
                                 <td
-                                    class="py-4 pr-6 text-slate-700"
+                                    class="px-5 py-4 text-sm text-slate-600"
                                 >
                                     {{
                                         invitation.student_name ||
@@ -544,7 +615,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="py-4 pr-6 text-slate-500"
+                                    class="px-5 py-4 text-sm text-slate-600"
                                 >
                                     {{
                                         invitation.subject ||
@@ -553,7 +624,7 @@ const formatBilling = (value) => {
                                 </td>
 
                                 <td
-                                    class="whitespace-nowrap py-4 pr-6 text-slate-500"
+                                    class="px-5 py-4 text-sm text-slate-500"
                                 >
                                     {{
                                         formatDateTime(
@@ -562,7 +633,9 @@ const formatBilling = (value) => {
                                     }}
                                 </td>
 
-                                <td class="py-4 text-right">
+                                <td
+                                    class="px-5 py-4"
+                                >
                                     <div
                                         class="flex justify-end gap-3"
                                     >
@@ -587,7 +660,7 @@ const formatBilling = (value) => {
                                             type="button"
                                             class="text-sm font-medium text-red-600 hover:text-red-700"
                                             @click="
-                                                openDeleteInvitationModal(
+                                                requestInvitationRemoval(
                                                     invitation
                                                 )
                                             "
@@ -610,8 +683,8 @@ const formatBilling = (value) => {
         >
             <button
                 type="button"
-                aria-label="Close student details"
-                class="absolute inset-0 bg-slate-950/20"
+                aria-label="Close student"
+                class="absolute inset-0 bg-slate-950/25"
                 @click="closeStudent"
             ></button>
 
@@ -644,16 +717,20 @@ const formatBilling = (value) => {
                     </button>
                 </div>
 
-                <dl class="mt-8 divide-y divide-slate-200">
-                    <div class="py-4">
+                <dl
+                    class="mt-8 divide-y divide-slate-200 border-y border-slate-200"
+                >
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
                         <dt
-                            class="text-xs font-medium text-slate-500"
+                            class="text-sm text-slate-500"
                         >
                             Subject
                         </dt>
 
                         <dd
-                            class="mt-1 text-sm text-slate-900"
+                            class="text-sm font-medium text-slate-900"
                         >
                             {{
                                 selectedStudent.subject ||
@@ -662,15 +739,17 @@ const formatBilling = (value) => {
                         </dd>
                     </div>
 
-                    <div class="py-4">
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
                         <dt
-                            class="text-xs font-medium text-slate-500"
+                            class="text-sm text-slate-500"
                         >
                             Lesson price
                         </dt>
 
                         <dd
-                            class="mt-1 text-sm text-slate-900"
+                            class="text-sm font-medium text-slate-900"
                         >
                             {{
                                 formatPrice(
@@ -680,15 +759,17 @@ const formatBilling = (value) => {
                         </dd>
                     </div>
 
-                    <div class="py-4">
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
                         <dt
-                            class="text-xs font-medium text-slate-500"
+                            class="text-sm text-slate-500"
                         >
                             Billing
                         </dt>
 
                         <dd
-                            class="mt-1 text-sm text-slate-900"
+                            class="text-sm font-medium text-slate-900"
                         >
                             {{
                                 formatBilling(
@@ -698,15 +779,17 @@ const formatBilling = (value) => {
                         </dd>
                     </div>
 
-                    <div class="py-4">
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
                         <dt
-                            class="text-xs font-medium text-slate-500"
+                            class="text-sm text-slate-500"
                         >
                             Joined
                         </dt>
 
                         <dd
-                            class="mt-1 text-sm text-slate-900"
+                            class="text-sm font-medium text-slate-900"
                         >
                             {{
                                 formatDate(
@@ -718,13 +801,13 @@ const formatBilling = (value) => {
                 </dl>
 
                 <div
-                    class="mt-8 border-t border-slate-200 pt-6"
+                    class="mt-8"
                 >
                     <button
                         type="button"
                         class="text-sm font-medium text-red-600 hover:text-red-700"
                         @click="
-                            openRemoveModal(
+                            requestStudentRemoval(
                                 selectedStudent
                             )
                         "
@@ -736,61 +819,82 @@ const formatBilling = (value) => {
         </div>
 
         <!-- Invite modal -->
-        <Modal
-            :show="showInviteModal"
-            max-width="lg"
-            @close="closeInviteModal"
+        <div
+            v-if="showInviteModal"
+            class="fixed inset-0 z-[60]"
         >
-            <form
-                class="p-6"
-                @submit.prevent="submitInvitation"
-            >
-                <div>
-                    <h2
-                        class="text-lg font-semibold text-slate-950"
-                    >
-                        Invite student
-                    </h2>
+            <button
+                type="button"
+                class="absolute inset-0 bg-slate-950/25"
+                aria-label="Close"
+                @click="closeInviteModal"
+            ></button>
 
-                    <p
-                        class="mt-1 text-sm text-slate-500"
+            <div
+                class="absolute inset-x-4 top-16 mx-auto max-w-lg rounded-xl bg-white shadow-xl"
+            >
+                <div
+                    class="flex items-start justify-between border-b border-slate-200 px-6 py-5"
+                >
+                    <div>
+                        <h2
+                            class="text-lg font-semibold text-slate-950"
+                        >
+                            Invite student
+                        </h2>
+
+                        <p
+                            class="mt-1 text-sm text-slate-500"
+                        >
+                            Generate an invitation code for a student.
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="text-sm text-slate-500 hover:text-slate-950"
+                        @click="closeInviteModal"
                     >
-                        Create a code the student can use to
-                        connect their account.
-                    </p>
+                        Close
+                    </button>
                 </div>
 
-                <div class="mt-6 space-y-4">
+                <form
+                    class="space-y-5 p-6"
+                    @submit.prevent="submitInvitation"
+                >
                     <div>
                         <label
-                            for="student_name"
-                            class="mb-1.5 block text-sm font-medium text-slate-700"
+                            for="invite-name"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Student name
                         </label>
 
                         <input
-                            id="student_name"
-                            ref="nameInput"
+                            id="invite-name"
                             v-model="inviteForm.student_name"
                             type="text"
                             required
-                            placeholder="Mark Kowalski"
-                            class="block w-full rounded-md border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
+                            class="mt-2 block w-full rounded-md border-slate-300"
                         />
 
-                        <InputError
-                            class="mt-1.5"
-                            :message="
+                        <p
+                            v-if="
                                 inviteForm.errors.student_name
                             "
-                        />
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                inviteForm.errors.student_name
+                            }}
+                        </p>
                     </div>
 
                     <div>
                         <label
                             for="invite-subject"
-                            class="mb-1.5 block text-sm font-medium text-slate-700"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Subject
                         </label>
@@ -800,190 +904,182 @@ const formatBilling = (value) => {
                             v-model="inviteForm.subject"
                             type="text"
                             required
-                            placeholder="Mathematics"
-                            class="block w-full rounded-md border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
+                            class="mt-2 block w-full rounded-md border-slate-300"
                         />
 
-                        <InputError
-                            class="mt-1.5"
-                            :message="
+                        <p
+                            v-if="
                                 inviteForm.errors.subject
                             "
-                        />
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                inviteForm.errors.subject
+                            }}
+                        </p>
                     </div>
 
                     <div>
                         <label
                             for="invite-price"
-                            class="mb-1.5 block text-sm font-medium text-slate-700"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Lesson price
                         </label>
 
-                        <div class="relative">
-                            <input
-                                id="invite-price"
-                                v-model="inviteForm.price"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="80"
-                                class="block w-full rounded-md border-slate-300 px-3 py-2 pr-12 text-sm focus:border-slate-500 focus:ring-slate-500"
-                            />
+                        <input
+                            id="invite-price"
+                            v-model="inviteForm.price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="mt-2 block w-full rounded-md border-slate-300"
+                        />
 
-                            <span
-                                class="absolute inset-y-0 right-3 flex items-center text-sm text-slate-400"
-                            >
-                                PLN
-                            </span>
-                        </div>
-
-                        <InputError
-                            class="mt-1.5"
-                            :message="
+                        <p
+                            v-if="
                                 inviteForm.errors.price
                             "
-                        />
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                inviteForm.errors.price
+                            }}
+                        </p>
                     </div>
-                </div>
 
-                <div
-                    class="mt-7 flex justify-end gap-3"
-                >
-                    <button
-                        type="button"
-                        class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        @click="closeInviteModal"
+                    <div
+                        class="flex justify-end gap-3 border-t border-slate-200 pt-5"
                     >
-                        Cancel
-                    </button>
+                        <button
+                            type="button"
+                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            @click="closeInviteModal"
+                        >
+                            Cancel
+                        </button>
 
-                    <button
-                        type="submit"
-                        :disabled="inviteForm.processing"
-                        class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
-                    >
-                        {{
-                            inviteForm.processing
-                                ? 'Generating...'
-                                : 'Generate code'
-                        }}
-                    </button>
-                </div>
-            </form>
-        </Modal>
+                        <button
+                            type="submit"
+                            :disabled="inviteForm.processing"
+                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+                        >
+                            {{
+                                inviteForm.processing
+                                    ? 'Creating...'
+                                    : 'Generate code'
+                            }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        <!-- Remove student -->
-        <Modal
-            :show="studentPendingRemoval !== null"
-            max-width="md"
-            @close="closeRemoveModal"
+        <!-- Remove student confirm -->
+        <div
+            v-if="studentPendingRemoval"
+            class="fixed inset-0 z-[70]"
         >
-            <div class="p-6">
+            <button
+                type="button"
+                class="absolute inset-0 bg-slate-950/30"
+                @click="cancelStudentRemoval"
+            ></button>
+
+            <div
+                class="absolute inset-x-4 top-28 mx-auto max-w-md rounded-xl bg-white p-6 shadow-xl"
+            >
                 <h2
                     class="text-lg font-semibold text-slate-950"
                 >
                     Remove student?
                 </h2>
 
-                <p class="mt-2 text-sm text-slate-600">
+                <p
+                    class="mt-2 text-sm leading-6 text-slate-500"
+                >
                     {{
-                        studentPendingRemoval?.name
+                        studentPendingRemoval.name
                     }}
-                    will be disconnected from your account.
+                    will be removed from your student list.
                 </p>
-
-                <InputError
-                    class="mt-4"
-                    :message="removeError"
-                />
 
                 <div
                     class="mt-6 flex justify-end gap-3"
                 >
-                    <SecondaryButton
-                        :disabled="removeForm.processing"
-                        @click="closeRemoveModal"
+                    <button
+                        type="button"
+                        class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium"
+                        @click="cancelStudentRemoval"
                     >
                         Cancel
-                    </SecondaryButton>
+                    </button>
 
-                    <DangerButton
-                        :disabled="removeForm.processing"
-                        @click="confirmRemoveStudent"
+                    <button
+                        type="button"
+                        class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                        @click="confirmStudentRemoval"
                     >
-                        {{
-                            removeForm.processing
-                                ? 'Removing...'
-                                : 'Remove'
-                        }}
-                    </DangerButton>
+                        Remove
+                    </button>
                 </div>
             </div>
-        </Modal>
+        </div>
 
-        <!-- Revoke invitation -->
-        <Modal
-            :show="
-                invitationPendingDeletion !== null
-            "
-            max-width="md"
-            @close="closeDeleteInvitationModal"
+        <!-- Revoke invitation confirm -->
+        <div
+            v-if="invitationPendingRemoval"
+            class="fixed inset-0 z-[70]"
         >
-            <div class="p-6">
+            <button
+                type="button"
+                class="absolute inset-0 bg-slate-950/30"
+                @click="cancelInvitationRemoval"
+            ></button>
+
+            <div
+                class="absolute inset-x-4 top-28 mx-auto max-w-md rounded-xl bg-white p-6 shadow-xl"
+            >
                 <h2
                     class="text-lg font-semibold text-slate-950"
                 >
                     Revoke invitation?
                 </h2>
 
-                <p class="mt-2 text-sm text-slate-600">
+                <p
+                    class="mt-2 text-sm leading-6 text-slate-500"
+                >
                     Code
                     <span
-                        class="font-mono font-semibold"
+                        class="font-mono font-semibold text-slate-900"
                     >
                         {{
-                            invitationPendingDeletion?.code
+                            invitationPendingRemoval.code
                         }}
                     </span>
-                    will no longer work.
+                    will stop working immediately.
                 </p>
-
-                <InputError
-                    class="mt-4"
-                    :message="deleteInvitationError"
-                />
 
                 <div
                     class="mt-6 flex justify-end gap-3"
                 >
-                    <SecondaryButton
-                        :disabled="
-                            deleteInvitationForm.processing
-                        "
-                        @click="
-                            closeDeleteInvitationModal
-                        "
+                    <button
+                        type="button"
+                        class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium"
+                        @click="cancelInvitationRemoval"
                     >
                         Cancel
-                    </SecondaryButton>
+                    </button>
 
-                    <DangerButton
-                        :disabled="
-                            deleteInvitationForm.processing
-                        "
-                        @click="
-                            confirmDeleteInvitation
-                        "
+                    <button
+                        type="button"
+                        class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                        @click="confirmInvitationRemoval"
                     >
-                        {{
-                            deleteInvitationForm.processing
-                                ? 'Revoking...'
-                                : 'Revoke'
-                        }}
-                    </DangerButton>
+                        Revoke
+                    </button>
                 </div>
             </div>
-        </Modal>
+        </div>
     </AuthenticatedLayout>
 </template>

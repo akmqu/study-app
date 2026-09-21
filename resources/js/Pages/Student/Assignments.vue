@@ -22,9 +22,7 @@ const props = defineProps({
 const page = usePage();
 
 const successMessage = computed(
-    () =>
-        page.props.flash?.success
-        ?? null
+    () => page.props.flash?.success ?? null
 );
 
 const activeFilter = ref('all');
@@ -83,15 +81,12 @@ const filteredAssignments =
 
 const filterCount = (status) => {
     if (status === 'all') {
-        return props
-            .assignments
-            .length;
+        return props.assignments.length;
     }
 
     return props.assignments.filter(
         (assignment) =>
-            assignment.status ===
-            status
+            assignment.status === status
     ).length;
 };
 
@@ -103,9 +98,7 @@ const statusLabel = (status) => {
         return 'Awaiting review';
     }
 
-    if (
-        status === 'graded'
-    ) {
+    if (status === 'graded') {
         return 'Graded';
     }
 
@@ -202,8 +195,7 @@ const resetSubmitForm = () => {
     submitForm.clearErrors();
 
     if (fileInput.value) {
-        fileInput.value.value =
-            '';
+        fileInput.value.value = '';
     }
 };
 
@@ -215,22 +207,17 @@ const openSubmitModal = (
 
     resetSubmitForm();
 
-    showSubmitModal.value =
-        true;
+    showSubmitModal.value = true;
 };
 
 const closeSubmitModal = () => {
-    if (
-        submitForm.processing
-    ) {
+    if (submitForm.processing) {
         return;
     }
 
-    showSubmitModal.value =
-        false;
+    showSubmitModal.value = false;
 
-    submissionTarget.value =
-        null;
+    submissionTarget.value = null;
 
     resetSubmitForm();
 };
@@ -282,11 +269,10 @@ const submitWork = () => {
 
     <AuthenticatedLayout>
         <div
-            class="mx-auto max-w-5xl"
+            class="mx-auto max-w-6xl"
         >
-            <header
-                class="border-b border-slate-200 pb-6"
-            >
+            <!-- Header -->
+            <header>
                 <h1
                     class="text-2xl font-semibold tracking-tight text-slate-950"
                 >
@@ -294,176 +280,208 @@ const submitWork = () => {
                 </h1>
 
                 <p
-                    class="mt-2 text-sm text-slate-500"
+                    class="mt-1.5 text-sm text-slate-500"
                 >
                     Homework from your tutors.
                 </p>
             </header>
 
+            <!-- Success -->
             <div
                 v-if="successMessage"
-                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ successMessage }}
             </div>
 
-            <div
-                class="mt-6 flex flex-wrap gap-1 border-b border-slate-200"
+            <!-- Main assignments card -->
+            <section
+                class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
-                <button
-                    v-for="filter in filters"
-                    :key="filter.key"
-                    type="button"
-                    class="-mb-px border-b-2 px-3 py-3 text-sm font-medium transition"
-                    :class="
-                        activeFilter ===
-                        filter.key
-                            ? 'border-slate-900 text-slate-950'
-                            : 'border-transparent text-slate-500 hover:text-slate-900'
-                    "
-                    @click="
-                        activeFilter =
-                            filter.key
-                    "
+                <!-- Filters -->
+                <div
+                    class="border-b border-slate-200 px-5"
                 >
-                    {{ filter.label }}
-
-                    <span
-                        class="ml-1.5 text-xs text-slate-400"
+                    <div
+                        class="flex flex-wrap gap-1"
                     >
-                        {{
-                            filterCount(
+                        <button
+                            v-for="filter in filters"
+                            :key="filter.key"
+                            type="button"
+                            class="-mb-px border-b-2 px-3 py-4 text-sm font-medium transition"
+                            :class="
+                                activeFilter ===
                                 filter.key
-                            )
-                        }}
-                    </span>
-                </button>
-            </div>
-
-            <div
-                v-if="
-                    filteredAssignments.length
-                    === 0
-                "
-                class="py-14"
-            >
-                <p
-                    class="text-sm font-medium text-slate-900"
-                >
-                    No assignments here
-                </p>
-
-                <p
-                    class="mt-1 text-sm text-slate-500"
-                >
-                    There are no assignments
-                    in this category.
-                </p>
-            </div>
-
-            <div
-                v-else
-                class="border-b border-slate-200"
-            >
-                <button
-                    v-for="assignment in filteredAssignments"
-                    :key="assignment.id"
-                    type="button"
-                    class="group grid w-full gap-3 border-b border-slate-200 py-5 text-left transition last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_150px_150px_32px] sm:items-center sm:px-3"
-                    @click="
-                        openAssignment(
-                            assignment
-                        )
-                    "
-                >
-                    <div class="min-w-0">
-                        <p
-                            class="truncate text-sm font-medium text-slate-900"
+                                    ? 'border-slate-900 text-slate-950'
+                                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                            "
+                            @click="
+                                activeFilter =
+                                    filter.key
+                            "
                         >
-                            {{ assignment.title }}
-                        </p>
+                            {{ filter.label }}
 
+                            <span
+                                class="ml-1.5 text-xs text-slate-400"
+                            >
+                                {{
+                                    filterCount(
+                                        filter.key
+                                    )
+                                }}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty -->
+                <div
+                    v-if="
+                        filteredAssignments.length
+                        === 0
+                    "
+                    class="px-5 py-14"
+                >
+                    <p
+                        class="text-sm font-medium text-slate-900"
+                    >
+                        No assignments here
+                    </p>
+
+                    <p
+                        class="mt-1 text-sm text-slate-500"
+                    >
+                        There are no assignments
+                        in this category.
+                    </p>
+                </div>
+
+                <!-- Rows -->
+                <div v-else>
+                    <button
+                        v-for="assignment in filteredAssignments"
+                        :key="assignment.id"
+                        type="button"
+                        class="group grid w-full gap-3 border-b border-slate-100 px-5 py-5 text-left transition last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_150px_190px_24px] sm:items-center"
+                        @click="
+                            openAssignment(
+                                assignment
+                            )
+                        "
+                    >
+                        <!-- Main -->
+                        <div class="min-w-0">
+                            <div
+                                class="flex flex-wrap items-center gap-2"
+                            >
+                                <p
+                                    class="truncate text-sm font-medium text-slate-900"
+                                >
+                                    {{
+                                        assignment.title
+                                    }}
+                                </p>
+
+                                <span
+                                    v-if="
+                                        isOverdue(
+                                            assignment
+                                        )
+                                    "
+                                    class="text-xs font-medium text-red-600"
+                                >
+                                    Overdue
+                                </span>
+                            </div>
+
+                            <p
+                                class="mt-1 truncate text-sm text-slate-500"
+                            >
+                                {{
+                                    assignment.subject
+                                }}
+
+                                <span
+                                    v-if="
+                                        assignment.tutor
+                                            ?.name
+                                    "
+                                    class="mx-1.5 text-slate-300"
+                                >
+                                    ·
+                                </span>
+
+                                {{
+                                    assignment.tutor
+                                        ?.name
+                                }}
+                            </p>
+                        </div>
+
+                        <!-- Deadline -->
                         <p
-                            class="mt-1 truncate text-sm text-slate-500"
+                            class="text-sm"
+                            :class="
+                                isOverdue(
+                                    assignment
+                                )
+                                    ? 'text-red-600'
+                                    : 'text-slate-500'
+                            "
                         >
                             {{
-                                assignment.subject
+                                formatDate(
+                                    assignment.deadline
+                                )
                             }}
+                        </p>
+
+                        <!-- Status -->
+                        <div
+                            class="flex flex-wrap items-center gap-2"
+                        >
+                            <span
+                                class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                                :class="
+                                    statusClasses(
+                                        assignment.status
+                                    )
+                                "
+                            >
+                                {{
+                                    statusLabel(
+                                        assignment.status
+                                    )
+                                }}
+                            </span>
 
                             <span
                                 v-if="
-                                    assignment.tutor
-                                        ?.name
+                                    assignment.status ===
+                                        'graded'
+                                    &&
+                                    assignment.grade !==
+                                        null
                                 "
-                                class="mx-1.5 text-slate-300"
+                                class="text-sm font-semibold text-slate-700"
                             >
-                                ·
+                                {{
+                                    assignment.grade
+                                }}/100
                             </span>
+                        </div>
 
-                            {{
-                                assignment.tutor
-                                    ?.name
-                            }}
-                        </p>
-                    </div>
-
-                    <p
-                        class="text-sm"
-                        :class="
-                            isOverdue(
-                                assignment
-                            )
-                                ? 'text-red-600'
-                                : 'text-slate-500'
-                        "
-                    >
-                        {{
-                            formatDate(
-                                assignment
-                                    .deadline
-                            )
-                        }}
-                    </p>
-
-                    <div>
-                        <span
-                            class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
-                            :class="
-                                statusClasses(
-                                    assignment.status
-                                )
-                            "
+                        <!-- Arrow -->
+                        <div
+                            class="hidden text-right text-slate-300 transition group-hover:text-slate-700 sm:block"
                         >
-                            {{
-                                statusLabel(
-                                    assignment.status
-                                )
-                            }}
-                        </span>
-
-                        <span
-                            v-if="
-                                assignment.status ===
-                                    'graded'
-                                &&
-                                assignment.grade !==
-                                    null
-                            "
-                            class="ml-2 text-sm font-medium text-slate-700"
-                        >
-                            {{
-                                assignment.grade
-                            }}/100
-                        </span>
-                    </div>
-
-                    <div
-                        class="hidden text-right text-slate-300 sm:block"
-                    >
-                        →
-                    </div>
-                </button>
-            </div>
+                            →
+                        </div>
+                    </button>
+                </div>
+            </section>
         </div>
 
         <!-- Assignment drawer -->
@@ -503,6 +521,10 @@ const submitWork = () => {
                             }}
 
                             <span
+                                v-if="
+                                    selectedAssignment
+                                        .tutor?.name
+                                "
                                 class="mx-1.5 text-slate-300"
                             >
                                 ·
@@ -595,7 +617,7 @@ const submitWork = () => {
                         </dt>
 
                         <dd
-                            class="text-sm font-semibold"
+                            class="text-sm font-semibold text-slate-900"
                         >
                             {{
                                 selectedAssignment.grade
@@ -611,7 +633,7 @@ const submitWork = () => {
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Instructions
                     </h3>
@@ -633,25 +655,32 @@ const submitWork = () => {
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Tutor attachments
                     </h3>
 
                     <div
-                        class="mt-3 divide-y divide-slate-200 border-y"
+                        class="mt-3 divide-y divide-slate-200 border-y border-slate-200"
                     >
                         <a
                             v-for="attachment in selectedAssignment.attachments"
                             :key="attachment.id"
                             :href="attachment.url"
                             target="_blank"
-                            class="flex justify-between py-3 text-sm"
+                            rel="noopener noreferrer"
+                            class="flex items-center justify-between gap-4 py-3 text-sm text-slate-700 hover:text-slate-950"
                         >
-                            {{ attachment.name }}
+                            <span
+                                class="truncate"
+                            >
+                                {{
+                                    attachment.name
+                                }}
+                            </span>
 
                             <span
-                                class="text-slate-400"
+                                class="shrink-0 text-slate-400"
                             >
                                 Open
                             </span>
@@ -666,7 +695,7 @@ const submitWork = () => {
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Your submission
                     </h3>
@@ -690,7 +719,7 @@ const submitWork = () => {
                                 .submission
                                 .answer
                         "
-                        class="mt-4"
+                        class="mt-4 rounded-lg bg-slate-50 p-4"
                     >
                         <p
                             class="text-xs font-medium uppercase tracking-wide text-slate-400"
@@ -721,7 +750,8 @@ const submitWork = () => {
                                 .file_url
                         "
                         target="_blank"
-                        class="mt-4 inline-block text-sm font-medium underline underline-offset-4"
+                        rel="noopener noreferrer"
+                        class="mt-4 inline-block text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950"
                     >
                         Open submitted file
                     </a>
@@ -734,13 +764,13 @@ const submitWork = () => {
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Tutor feedback
                     </h3>
 
                     <p
-                        class="mt-3 whitespace-pre-line border-l-2 border-slate-300 pl-4 text-sm leading-6 text-slate-600"
+                        class="mt-3 whitespace-pre-line rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-700"
                     >
                         {{
                             selectedAssignment.feedback
@@ -757,7 +787,7 @@ const submitWork = () => {
                                 'todo'
                         "
                         type="button"
-                        class="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
+                        class="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
                         @click="
                             openSubmitModal(
                                 selectedAssignment
@@ -781,7 +811,7 @@ const submitWork = () => {
                     <button
                         v-else
                         type="button"
-                        class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium"
+                        class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                         @click="
                             openSubmitModal(
                                 selectedAssignment
@@ -809,13 +839,13 @@ const submitWork = () => {
             ></button>
 
             <div
-                class="absolute inset-x-4 top-16 mx-auto max-h-[calc(100vh-8rem)] max-w-lg overflow-y-auto rounded-lg bg-white shadow-xl"
+                class="absolute inset-x-4 top-16 mx-auto max-h-[calc(100vh-8rem)] max-w-lg overflow-y-auto rounded-xl bg-white shadow-xl"
             >
                 <div
                     class="border-b border-slate-200 px-6 py-5"
                 >
                     <h2
-                        class="text-lg font-semibold"
+                        class="text-lg font-semibold text-slate-950"
                     >
                         {{
                             submissionTarget
@@ -862,14 +892,12 @@ const submitWork = () => {
 
                         <p
                             v-if="
-                                submitForm.errors
-                                    .answer
+                                submitForm.errors.answer
                             "
                             class="mt-2 text-xs text-red-600"
                         >
                             {{
-                                submitForm.errors
-                                    .answer
+                                submitForm.errors.answer
                             }}
                         </p>
                     </div>
@@ -951,7 +979,7 @@ const submitWork = () => {
                             :disabled="
                                 submitForm.processing
                             "
-                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium"
+                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                             @click="
                                 closeSubmitModal
                             "
@@ -973,7 +1001,7 @@ const submitWork = () => {
                                     ).trim()
                                 )
                             "
-                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {{
                                 submitForm.processing

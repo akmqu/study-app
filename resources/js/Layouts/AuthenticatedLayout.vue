@@ -9,8 +9,7 @@ const user = computed(
 );
 
 const isTutor = computed(
-    () =>
-        user.value?.role === 'tutor'
+    () => user.value?.role === 'tutor'
 );
 
 const mobileMenuOpen = ref(false);
@@ -23,19 +22,16 @@ const navigation = computed(() => {
                 route: 'tutor.dashboard',
                 active: 'tutor.dashboard',
             },
-
             {
                 label: 'Students',
                 route: 'tutor.students',
                 active: 'tutor.students*',
             },
-
             {
                 label: 'Calendar',
                 route: 'tutor.calendar',
                 active: 'tutor.calendar*',
             },
-
             {
                 label: 'Assignments',
                 route: 'tutor.assignments',
@@ -50,7 +46,6 @@ const navigation = computed(() => {
             route: 'student.dashboard',
             active: 'student.dashboard',
         },
-
         {
             label: 'Assignments',
             route: 'student.assignments',
@@ -60,14 +55,11 @@ const navigation = computed(() => {
 });
 
 const isActive = (pattern) => {
-    return route()
-        .current(pattern);
+    return route().current(pattern);
 };
 
 const initials = computed(() => {
-    return String(
-        user.value?.name ?? ''
-    )
+    return String(user.value?.name ?? '')
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
@@ -89,11 +81,11 @@ const roleLabel = computed(() => {
 
 <template>
     <div
-        class="min-h-screen bg-white text-slate-900"
+        class="min-h-screen bg-slate-50 text-slate-900"
     >
         <!-- Desktop sidebar -->
         <aside
-            class="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-200 bg-slate-50 md:flex md:flex-col"
+            class="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-slate-200 bg-white md:flex md:flex-col"
         >
             <!-- Logo -->
             <div
@@ -107,7 +99,7 @@ const roleLabel = computed(() => {
                                 : 'student.dashboard'
                         )
                     "
-                    class="text-base font-semibold tracking-tight text-slate-900"
+                    class="text-base font-semibold tracking-tight text-slate-950"
                 >
                     Tutorly
                 </Link>
@@ -117,9 +109,7 @@ const roleLabel = computed(() => {
             <nav
                 class="flex-1 px-3 py-5"
             >
-                <div
-                    class="space-y-1"
-                >
+                <div class="space-y-1">
                     <Link
                         v-for="item in navigation"
                         :key="item.route"
@@ -128,13 +118,13 @@ const roleLabel = computed(() => {
                                 item.route
                             )
                         "
-                        class="block rounded-md px-3 py-2 text-sm font-medium transition"
+                        class="block rounded-md px-3 py-2.5 text-sm font-medium transition"
                         :class="
                             isActive(
                                 item.active
                             )
-                                ? 'bg-slate-200 text-slate-950'
-                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                ? 'bg-slate-100 text-slate-950'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                         "
                     >
                         {{ item.label }}
@@ -144,7 +134,7 @@ const roleLabel = computed(() => {
 
             <!-- User -->
             <div
-                class="border-t border-slate-200 px-3 py-4"
+                class="border-t border-slate-200 p-3"
             >
                 <Link
                     :href="
@@ -152,7 +142,7 @@ const roleLabel = computed(() => {
                             'profile.edit'
                         )
                     "
-                    class="mb-3 block rounded-md px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                    class="mb-2 block rounded-md px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                     Profile
                 </Link>
@@ -161,14 +151,12 @@ const roleLabel = computed(() => {
                     class="flex items-center gap-3 px-3 py-2"
                 >
                     <div
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700"
                     >
                         {{ initials }}
                     </div>
 
-                    <div
-                        class="min-w-0 flex-1"
-                    >
+                    <div class="min-w-0">
                         <p
                             class="truncate text-sm font-medium text-slate-900"
                         >
@@ -191,14 +179,14 @@ const roleLabel = computed(() => {
                     "
                     method="post"
                     as="button"
-                    class="mt-2 w-full rounded-md px-3 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                    class="mt-1 w-full rounded-md px-3 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                     Log out
                 </Link>
             </div>
         </aside>
 
-        <!-- Mobile -->
+        <!-- Mobile header -->
         <header
             class="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden"
         >
@@ -231,13 +219,12 @@ const roleLabel = computed(() => {
             </button>
         </header>
 
+        <!-- Mobile navigation -->
         <div
             v-if="mobileMenuOpen"
             class="border-b border-slate-200 bg-white px-4 py-3 md:hidden"
         >
-            <nav
-                class="space-y-1"
-            >
+            <nav class="space-y-1">
                 <Link
                     v-for="item in navigation"
                     :key="item.route"
@@ -292,10 +279,8 @@ const roleLabel = computed(() => {
             </nav>
         </div>
 
-        <!-- Content -->
-        <div
-            class="md:pl-60"
-        >
+        <!-- Page content -->
+        <div class="md:pl-60">
             <main
                 class="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
             >

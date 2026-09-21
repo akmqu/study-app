@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+
 import {
     Head,
     Link,
@@ -52,7 +53,9 @@ const submitCode = () => {
         .toUpperCase();
 
     form.post(
-        route('student.invitations.redeem'),
+        route(
+            'student.invitations.redeem'
+        ),
         {
             preserveScroll: true,
 
@@ -68,11 +71,9 @@ const submitCode = () => {
     <Head title="Home" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-5xl">
-            <!-- Heading -->
-            <header
-                class="border-b border-slate-200 pb-6"
-            >
+        <div class="mx-auto max-w-6xl">
+            <!-- Header -->
+            <header>
                 <h1
                     class="text-2xl font-semibold tracking-tight text-slate-950"
                 >
@@ -80,26 +81,27 @@ const submitCode = () => {
                 </h1>
 
                 <p
-                    class="mt-2 text-sm text-slate-500"
+                    class="mt-1.5 text-sm text-slate-500"
                 >
-                    Welcome back, {{ user.name }}.
+                    Welcome back,
+                    {{ user.name }}.
                 </p>
             </header>
 
             <!-- Success -->
             <div
                 v-if="successMessage"
-                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ successMessage }}
             </div>
 
             <!-- Assignment summary -->
             <section
-                class="mt-8 border-b border-slate-200 pb-8"
+                class="mt-8 rounded-xl border border-slate-200 bg-white shadow-sm"
             >
                 <div
-                    class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"
+                    class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
                 >
                     <div>
                         <h2
@@ -109,55 +111,104 @@ const submitCode = () => {
                         </h2>
 
                         <p
-                            class="mt-2 text-sm text-slate-500"
+                            class="mt-1 text-sm text-slate-500"
                         >
-                            <span
-                                class="font-medium text-slate-700"
-                            >
-                                {{ upcomingAssignments }}
-                            </span>
-
-                            {{
-                                upcomingAssignments === 1
-                                    ? 'assignment'
-                                    : 'assignments'
-                            }}
-                            to complete
-
-                            <span
-                                class="mx-2 text-slate-300"
-                            >
-                                ·
-                            </span>
-
-                            <span
-                                class="font-medium text-slate-700"
-                            >
-                                {{ pendingReviews }}
-                            </span>
-
-                            awaiting review
+                            Your current homework status.
                         </p>
                     </div>
 
                     <Link
                         :href="
-                            route('student.assignments')
+                            route(
+                                'student.assignments'
+                            )
                         "
-                        class="text-sm font-medium text-slate-700 transition hover:text-slate-950"
+                        class="text-sm font-medium text-slate-600 hover:text-slate-950"
                     >
                         View assignments →
                     </Link>
                 </div>
+
+                <div
+                    class="grid border-t border-slate-200 sm:grid-cols-2"
+                >
+                    <div
+                        class="px-5 py-5 sm:border-r sm:border-slate-200"
+                    >
+                        <p
+                            class="text-sm text-slate-500"
+                        >
+                            To complete
+                        </p>
+
+                        <div
+                            class="mt-2 flex items-baseline gap-2"
+                        >
+                            <span
+                                class="text-2xl font-semibold text-slate-950"
+                            >
+                                {{
+                                    upcomingAssignments
+                                }}
+                            </span>
+
+                            <span
+                                class="text-sm text-slate-500"
+                            >
+                                {{
+                                    upcomingAssignments === 1
+                                        ? 'assignment'
+                                        : 'assignments'
+                                }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div
+                        class="border-t border-slate-200 px-5 py-5 sm:border-t-0"
+                    >
+                        <p
+                            class="text-sm text-slate-500"
+                        >
+                            Awaiting review
+                        </p>
+
+                        <div
+                            class="mt-2 flex items-baseline gap-2"
+                        >
+                            <span
+                                class="text-2xl font-semibold text-slate-950"
+                            >
+                                {{
+                                    pendingReviews
+                                }}
+                            </span>
+
+                            <span
+                                class="text-sm text-slate-500"
+                            >
+                                {{
+                                    pendingReviews === 1
+                                        ? 'submission'
+                                        : 'submissions'
+                                }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
-            <!-- Main content -->
+            <!-- Bottom grid -->
             <div
-                class="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_340px]"
+                class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"
             >
                 <!-- Tutors -->
-                <section>
-                    <div>
+                <section
+                    class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="border-b border-slate-200 px-5 py-4"
+                    >
                         <h2
                             class="text-base font-semibold text-slate-900"
                         >
@@ -167,40 +218,34 @@ const submitCode = () => {
                         <p
                             class="mt-1 text-sm text-slate-500"
                         >
-                            Tutors connected to your
-                            account.
+                            Tutors connected to your account.
                         </p>
                     </div>
 
-                    <!-- Empty -->
                     <div
-                        v-if="tutors.length === 0"
-                        class="mt-5 border-t border-slate-200 py-10"
+                        v-if="
+                            tutors.length === 0
+                        "
+                        class="px-5 py-10"
                     >
                         <p
                             class="text-sm font-medium text-slate-900"
                         >
-                            No tutors yet
+                            No tutors connected
                         </p>
 
                         <p
-                            class="mt-1 max-w-md text-sm leading-6 text-slate-500"
+                            class="mt-1 text-sm leading-6 text-slate-500"
                         >
-                            Ask your tutor for an
-                            invitation code and enter it
-                            here to connect your account.
+                            Enter an invitation code to connect with your tutor.
                         </p>
                     </div>
 
-                    <!-- Tutor list -->
-                    <div
-                        v-else
-                        class="mt-5 border-t border-slate-200"
-                    >
+                    <div v-else>
                         <div
                             v-for="tutor in tutors"
                             :key="tutor.id"
-                            class="flex items-center justify-between gap-6 border-b border-slate-200 py-4"
+                            class="flex items-center justify-between gap-5 border-b border-slate-100 px-5 py-4 last:border-b-0"
                         >
                             <div class="min-w-0">
                                 <p
@@ -212,16 +257,13 @@ const submitCode = () => {
                                 <p
                                     class="mt-0.5 truncate text-sm text-slate-500"
                                 >
-                                    {{
-                                        tutor.subject ||
-                                        tutor.email
-                                    }}
+                                    {{ tutor.email }}
                                 </p>
                             </div>
 
                             <span
                                 v-if="tutor.subject"
-                                class="shrink-0 text-sm text-slate-400"
+                                class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600"
                             >
                                 {{ tutor.subject }}
                             </span>
@@ -231,22 +273,19 @@ const submitCode = () => {
 
                 <!-- Join tutor -->
                 <section
-                    class="self-start border border-slate-200 p-5"
+                    class="self-start rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
-                    <div>
-                        <h2
-                            class="text-base font-semibold text-slate-900"
-                        >
-                            Join a tutor
-                        </h2>
+                    <h2
+                        class="text-base font-semibold text-slate-900"
+                    >
+                        Join a tutor
+                    </h2>
 
-                        <p
-                            class="mt-1 text-sm leading-6 text-slate-500"
-                        >
-                            Enter the invitation code
-                            shared by your tutor.
-                        </p>
-                    </div>
+                    <p
+                        class="mt-1 text-sm leading-6 text-slate-500"
+                    >
+                        Enter the invitation code shared by your tutor.
+                    </p>
 
                     <form
                         class="mt-5"
@@ -254,7 +293,7 @@ const submitCode = () => {
                     >
                         <label
                             for="invitation-code"
-                            class="mb-1.5 block text-sm font-medium text-slate-700"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Invitation code
                         </label>
@@ -267,12 +306,12 @@ const submitCode = () => {
                             required
                             autocomplete="off"
                             placeholder="ABC12345"
-                            class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase tracking-widest placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
+                            class="mt-2 block w-full rounded-md border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase tracking-widest placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-500"
                         />
 
                         <p
                             v-if="form.errors.code"
-                            class="mt-1.5 text-xs text-red-600"
+                            class="mt-2 text-xs text-red-600"
                         >
                             {{ form.errors.code }}
                         </p>
@@ -280,7 +319,7 @@ const submitCode = () => {
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="mt-4 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            class="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {{
                                 form.processing

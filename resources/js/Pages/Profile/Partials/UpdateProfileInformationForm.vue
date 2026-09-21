@@ -1,6 +1,11 @@
 <script setup>
 import InputError from '@/Components/InputError.vue';
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+
+import {
+    Link,
+    useForm,
+    usePage,
+} from '@inertiajs/vue3';
 
 defineProps({
     mustVerifyEmail: {
@@ -12,7 +17,8 @@ defineProps({
     },
 });
 
-const user = usePage().props.auth.user;
+const user =
+    usePage().props.auth.user;
 
 const form = useForm({
     name: user.name,
@@ -22,47 +28,35 @@ const form = useForm({
 
 <template>
     <section>
-        <div class="flex items-start gap-3">
-            <span
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"
+        <div>
+            <h2
+                class="text-base font-semibold text-slate-900"
             >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="h-5 w-5"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M20 21a8 8 0 0 0-16 0"
-                    />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
-            </span>
+                Profile information
+            </h2>
 
-            <div>
-                <h2 class="font-medium text-slate-900">
-                    Profile information
-                </h2>
-
-                <p class="mt-1 text-sm text-slate-500">
-                    Update your name and email address.
-                </p>
-            </div>
+            <p
+                class="mt-1 text-sm text-slate-500"
+            >
+                Update your name and email address.
+            </p>
         </div>
 
         <form
             class="mt-6 max-w-xl space-y-5"
-            @submit.prevent="form.patch(route('profile.update'))"
+            @submit.prevent="
+                form.patch(
+                    route(
+                        'profile.update'
+                    )
+                )
+            "
         >
             <!-- Name -->
             <div>
                 <label
                     for="name"
-                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                    class="block text-sm font-medium text-slate-700"
                 >
                     Name
                 </label>
@@ -74,7 +68,7 @@ const form = useForm({
                     required
                     autofocus
                     autocomplete="name"
-                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 shadow-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                    class="mt-2 block w-full rounded-md border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-slate-500 focus:ring-slate-500"
                 />
 
                 <InputError
@@ -87,9 +81,9 @@ const form = useForm({
             <div>
                 <label
                     for="email"
-                    class="mb-1.5 block text-sm font-medium text-slate-700"
+                    class="block text-sm font-medium text-slate-700"
                 >
-                    Email
+                    Email address
                 </label>
 
                 <input
@@ -98,7 +92,7 @@ const form = useForm({
                     type="email"
                     required
                     autocomplete="username"
-                    class="block w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 shadow-none placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-indigo-500"
+                    class="mt-2 block w-full rounded-md border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-slate-500 focus:ring-slate-500"
                 />
 
                 <InputError
@@ -107,29 +101,37 @@ const form = useForm({
                 />
             </div>
 
-            <!-- Email verification -->
+            <!-- Verification -->
             <div
                 v-if="
-                    mustVerifyEmail &&
-                    user.email_verified_at === null
+                    mustVerifyEmail
+                    &&
+                    user.email_verified_at ===
+                        null
                 "
                 class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
             >
-                <p class="text-sm text-amber-800">
-                    Your email address is unverified.
+                <p
+                    class="text-sm text-amber-800"
+                >
+                    Your email address is not verified.
 
                     <Link
-                        :href="route('verification.send')"
+                        :href="
+                            route(
+                                'verification.send'
+                            )
+                        "
                         method="post"
                         as="button"
-                        class="font-medium underline hover:text-amber-950"
+                        class="font-medium underline underline-offset-2"
                     >
-                        Re-send verification email
+                        Send verification email
                     </Link>
                 </p>
 
                 <p
-                    v-show="
+                    v-if="
                         status ===
                         'verification-link-sent'
                     "
@@ -139,14 +141,13 @@ const form = useForm({
                 </p>
             </div>
 
-            <!-- Save -->
             <div
-                class="flex items-center gap-4 border-t border-slate-100 pt-5"
+                class="flex items-center gap-4 border-t border-slate-200 pt-5"
             >
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40"
                 >
                     {{
                         form.processing
@@ -156,37 +157,19 @@ const form = useForm({
                 </button>
 
                 <Transition
-                    enter-active-class="transition ease-in-out"
+                    enter-active-class="transition"
                     enter-from-class="opacity-0"
-                    leave-active-class="transition ease-in-out"
+                    leave-active-class="transition"
                     leave-to-class="opacity-0"
                 >
-                    <div
-                        v-if="form.recentlySuccessful"
-                        class="flex items-center gap-1.5 text-sm font-medium text-emerald-600"
+                    <span
+                        v-if="
+                            form.recentlySuccessful
+                        "
+                        class="text-sm font-medium text-emerald-600"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            class="h-4 w-4"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="m9 12 2 2 4-4"
-                            />
-                            <circle
-                                cx="12"
-                                cy="12"
-                                r="9"
-                            />
-                        </svg>
-
                         Saved
-                    </div>
+                    </span>
                 </Transition>
             </div>
         </form>

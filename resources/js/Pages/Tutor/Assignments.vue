@@ -29,9 +29,7 @@ const props = defineProps({
 const page = usePage();
 
 const successMessage = computed(
-    () =>
-        page.props.flash?.success
-        ?? null
+    () => page.props.flash?.success ?? null
 );
 
 const activeFilter = ref('all');
@@ -87,8 +85,7 @@ const selectedStudent =
             (student) =>
                 Number(student.id) ===
                 Number(
-                    createForm
-                        .student_id
+                    createForm.student_id
                 )
         );
     });
@@ -103,8 +100,7 @@ const availableSubjects =
     });
 
 watch(
-    () =>
-        createForm.student_id,
+    () => createForm.student_id,
     () => {
         createForm.subject = '';
     }
@@ -128,15 +124,12 @@ const filteredAssignments =
 
 const filterCount = (status) => {
     if (status === 'all') {
-        return props
-            .assignments
-            .length;
+        return props.assignments.length;
     }
 
     return props.assignments.filter(
         (assignment) =>
-            assignment.status ===
-            status
+            assignment.status === status
     ).length;
 };
 
@@ -148,9 +141,7 @@ const statusLabel = (status) => {
         return 'Awaiting review';
     }
 
-    if (
-        status === 'graded'
-    ) {
+    if (status === 'graded') {
         return 'Graded';
     }
 
@@ -170,6 +161,17 @@ const statusClasses = (status) => {
     }
 
     return 'bg-slate-100 text-slate-700';
+};
+
+const rowClasses = (assignment) => {
+    if (
+        assignment.status ===
+        'awaiting_review'
+    ) {
+        return 'hover:bg-amber-50/40';
+    }
+
+    return 'hover:bg-slate-50';
 };
 
 const formatDate = (value) => {
@@ -233,27 +235,22 @@ const resetCreateForm = () => {
     if (
         attachmentInput.value
     ) {
-        attachmentInput.value.value =
-            '';
+        attachmentInput.value.value = '';
     }
 };
 
 const openCreateModal = () => {
     resetCreateForm();
 
-    showCreateModal.value =
-        true;
+    showCreateModal.value = true;
 };
 
 const closeCreateModal = () => {
-    if (
-        createForm.processing
-    ) {
+    if (createForm.processing) {
         return;
     }
 
-    showCreateModal.value =
-        false;
+    showCreateModal.value = false;
 
     resetCreateForm();
 };
@@ -268,9 +265,7 @@ const handleAttachments = (
 };
 
 const submitAssignment = () => {
-    if (
-        createForm.processing
-    ) {
+    if (createForm.processing) {
         return;
     }
 
@@ -301,12 +296,10 @@ const openAssignment = (
     reviewForm.clearErrors();
 
     reviewForm.grade =
-        assignment.grade
-        ?? '';
+        assignment.grade ?? '';
 
     reviewForm.feedback =
-        assignment.feedback
-        ?? '';
+        assignment.feedback ?? '';
 };
 
 const closeAssignment = () => {
@@ -403,10 +396,11 @@ const deleteAssignment = (
 
     <AuthenticatedLayout>
         <div
-            class="mx-auto max-w-5xl"
+            class="mx-auto max-w-6xl"
         >
+            <!-- Header -->
             <header
-                class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
+                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
             >
                 <div>
                     <h1
@@ -416,7 +410,7 @@ const deleteAssignment = (
                     </h1>
 
                     <p
-                        class="mt-2 text-sm text-slate-500"
+                        class="mt-1.5 text-sm text-slate-500"
                     >
                         Create, review and manage
                         student homework.
@@ -428,7 +422,7 @@ const deleteAssignment = (
                     :disabled="
                         students.length === 0
                     "
-                    class="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+                    class="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     @click="
                         openCreateModal
                     "
@@ -437,153 +431,214 @@ const deleteAssignment = (
                 </button>
             </header>
 
+            <!-- Success -->
             <div
                 v-if="successMessage"
-                class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ successMessage }}
             </div>
 
-            <div
-                class="mt-6 flex flex-wrap gap-1 border-b border-slate-200"
+            <!-- Main assignments card -->
+            <section
+                class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
-                <button
-                    v-for="filter in filters"
-                    :key="filter.key"
-                    type="button"
-                    class="-mb-px border-b-2 px-3 py-3 text-sm font-medium"
-                    :class="
-                        activeFilter ===
-                        filter.key
-                            ? 'border-slate-900 text-slate-950'
-                            : 'border-transparent text-slate-500'
-                    "
-                    @click="
-                        activeFilter =
-                            filter.key
-                    "
+                <!-- Filters -->
+                <div
+                    class="border-b border-slate-200 px-5"
                 >
-                    {{ filter.label }}
-
-                    <span
-                        class="ml-1.5 text-xs text-slate-400"
+                    <div
+                        class="flex flex-wrap gap-1"
                     >
-                        {{
-                            filterCount(
+                        <button
+                            v-for="filter in filters"
+                            :key="filter.key"
+                            type="button"
+                            class="-mb-px border-b-2 px-3 py-4 text-sm font-medium transition"
+                            :class="
+                                activeFilter ===
                                 filter.key
-                            )
-                        }}
-                    </span>
-                </button>
-            </div>
-
-            <div
-                v-if="
-                    filteredAssignments.length
-                    === 0
-                "
-                class="py-14"
-            >
-                <p
-                    class="text-sm font-medium"
-                >
-                    No assignments here
-                </p>
-            </div>
-
-            <div
-                v-else
-                class="border-b border-slate-200"
-            >
-                <button
-                    v-for="assignment in filteredAssignments"
-                    :key="assignment.id"
-                    type="button"
-                    class="grid w-full gap-3 border-b border-slate-200 py-5 text-left sm:grid-cols-[minmax(0,1fr)_160px_150px_32px] sm:items-center sm:px-3"
-                    @click="
-                        openAssignment(
-                            assignment
-                        )
-                    "
-                >
-                    <div>
-                        <p
-                            class="text-sm font-medium"
+                                    ? 'border-slate-900 text-slate-950'
+                                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                            "
+                            @click="
+                                activeFilter =
+                                    filter.key
+                            "
                         >
-                            {{
-                                assignment.title
-                            }}
-                        </p>
+                            {{ filter.label }}
 
-                        <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            {{
-                                assignment.student
-                                    ?.name
-                            }}
-                            ·
-                            {{
-                                assignment.subject
-                            }}
-                        </p>
+                            <span
+                                class="ml-1.5 text-xs text-slate-400"
+                            >
+                                {{
+                                    filterCount(
+                                        filter.key
+                                    )
+                                }}
+                            </span>
+                        </button>
                     </div>
+                </div>
 
+                <!-- Empty -->
+                <div
+                    v-if="
+                        filteredAssignments.length
+                        === 0
+                    "
+                    class="px-5 py-14"
+                >
                     <p
-                        class="text-sm text-slate-500"
+                        class="text-sm font-medium text-slate-900"
                     >
-                        {{
-                            formatDate(
-                                assignment.deadline
-                            )
-                        }}
+                        No assignments here
                     </p>
 
-                    <span
-                        class="w-fit rounded-full px-2.5 py-1 text-xs font-medium"
+                    <p
+                        class="mt-1 text-sm text-slate-500"
+                    >
+                        There are no assignments
+                        in this category.
+                    </p>
+                </div>
+
+                <!-- Rows -->
+                <div v-else>
+                    <button
+                        v-for="assignment in filteredAssignments"
+                        :key="assignment.id"
+                        type="button"
+                        class="group grid w-full gap-3 border-b border-slate-100 px-5 py-5 text-left transition last:border-b-0 sm:grid-cols-[minmax(0,1fr)_160px_170px_24px] sm:items-center"
                         :class="
-                            statusClasses(
-                                assignment.status
+                            rowClasses(
+                                assignment
+                            )
+                        "
+                        @click="
+                            openAssignment(
+                                assignment
                             )
                         "
                     >
-                        {{
-                            statusLabel(
-                                assignment.status
-                            )
-                        }}
-                    </span>
+                        <!-- Assignment -->
+                        <div class="min-w-0">
+                            <div
+                                class="flex flex-wrap items-center gap-2"
+                            >
+                                <p
+                                    class="truncate text-sm font-medium text-slate-900"
+                                >
+                                    {{
+                                        assignment.title
+                                    }}
+                                </p>
 
-                    <span
-                        class="hidden text-right text-slate-400 sm:block"
-                    >
-                        →
-                    </span>
-                </button>
-            </div>
+                                <span
+                                    v-if="
+                                        isOverdue(
+                                            assignment
+                                        )
+                                    "
+                                    class="text-xs font-medium text-red-600"
+                                >
+                                    Overdue
+                                </span>
+                            </div>
+
+                            <p
+                                class="mt-1 truncate text-sm text-slate-500"
+                            >
+                                {{
+                                    assignment.student
+                                        ?.name
+                                }}
+
+                                <span
+                                    v-if="
+                                        assignment.subject
+                                    "
+                                    class="mx-1.5 text-slate-300"
+                                >
+                                    ·
+                                </span>
+
+                                {{
+                                    assignment.subject
+                                }}
+                            </p>
+                        </div>
+
+                        <!-- Deadline -->
+                        <p
+                            class="text-sm"
+                            :class="
+                                isOverdue(
+                                    assignment
+                                )
+                                    ? 'text-red-600'
+                                    : 'text-slate-500'
+                            "
+                        >
+                            {{
+                                formatDate(
+                                    assignment.deadline
+                                )
+                            }}
+                        </p>
+
+                        <!-- Status -->
+                        <div>
+                            <span
+                                class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                                :class="
+                                    statusClasses(
+                                        assignment.status
+                                    )
+                                "
+                            >
+                                {{
+                                    statusLabel(
+                                        assignment.status
+                                    )
+                                }}
+                            </span>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div
+                            class="hidden text-right text-slate-300 transition group-hover:text-slate-700 sm:block"
+                        >
+                            →
+                        </div>
+                    </button>
+                </div>
+            </section>
         </div>
 
-        <!-- Create -->
+        <!-- Create modal -->
         <div
             v-if="showCreateModal"
             class="fixed inset-0 z-50"
         >
             <button
+                type="button"
                 class="absolute inset-0 bg-slate-950/25"
+                aria-label="Close"
                 @click="
                     closeCreateModal
                 "
             ></button>
 
             <div
-                class="absolute inset-x-4 top-8 mx-auto max-h-[calc(100vh-4rem)] max-w-xl overflow-y-auto rounded-lg bg-white shadow-xl"
+                class="absolute inset-x-4 top-8 mx-auto max-h-[calc(100vh-4rem)] max-w-xl overflow-y-auto rounded-xl bg-white shadow-xl sm:top-16"
             >
                 <div
-                    class="flex justify-between border-b px-6 py-5"
+                    class="flex items-start justify-between border-b border-slate-200 px-6 py-5"
                 >
                     <div>
                         <h2
-                            class="text-lg font-semibold"
+                            class="text-lg font-semibold text-slate-950"
                         >
                             New assignment
                         </h2>
@@ -591,12 +646,14 @@ const deleteAssignment = (
                         <p
                             class="mt-1 text-sm text-slate-500"
                         >
-                            Create homework for a student.
+                            Create homework for
+                            a student.
                         </p>
                     </div>
 
                     <button
                         type="button"
+                        class="text-sm text-slate-500 hover:text-slate-950"
                         @click="
                             closeCreateModal
                         "
@@ -613,7 +670,7 @@ const deleteAssignment = (
                 >
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Student
                         </label>
@@ -622,8 +679,8 @@ const deleteAssignment = (
                             v-model="
                                 createForm.student_id
                             "
-                            class="mt-2 block w-full rounded-md border-slate-300"
                             required
+                            class="mt-2 block w-full rounded-md border-slate-300"
                         >
                             <option
                                 value=""
@@ -640,11 +697,24 @@ const deleteAssignment = (
                                 {{ student.name }}
                             </option>
                         </select>
+
+                        <p
+                            v-if="
+                                createForm.errors
+                                    .student_id
+                            "
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                createForm.errors
+                                    .student_id
+                            }}
+                        </p>
                     </div>
 
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Subject
                         </label>
@@ -653,11 +723,11 @@ const deleteAssignment = (
                             v-model="
                                 createForm.subject
                             "
-                            class="mt-2 block w-full rounded-md border-slate-300"
+                            required
                             :disabled="
                                 !createForm.student_id
                             "
-                            required
+                            class="mt-2 block w-full rounded-md border-slate-300 disabled:bg-slate-100"
                         >
                             <option
                                 value=""
@@ -674,11 +744,24 @@ const deleteAssignment = (
                                 {{ subject }}
                             </option>
                         </select>
+
+                        <p
+                            v-if="
+                                createForm.errors
+                                    .subject
+                            "
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                createForm.errors
+                                    .subject
+                            }}
+                        </p>
                     </div>
 
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Title
                         </label>
@@ -691,11 +774,22 @@ const deleteAssignment = (
                             required
                             class="mt-2 block w-full rounded-md border-slate-300"
                         />
+
+                        <p
+                            v-if="
+                                createForm.errors.title
+                            "
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                createForm.errors.title
+                            }}
+                        </p>
                     </div>
 
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Instructions
                         </label>
@@ -705,13 +799,13 @@ const deleteAssignment = (
                                 createForm.instructions
                             "
                             rows="5"
-                            class="mt-2 block w-full rounded-md border-slate-300"
+                            class="mt-2 block w-full resize-y rounded-md border-slate-300"
                         ></textarea>
                     </div>
 
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Deadline
                         </label>
@@ -727,7 +821,7 @@ const deleteAssignment = (
 
                     <div>
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Attachments
                         </label>
@@ -737,19 +831,25 @@ const deleteAssignment = (
                             type="file"
                             multiple
                             accept=".pdf,.doc,.docx"
-                            class="mt-2 block w-full"
+                            class="mt-2 block w-full text-sm text-slate-500"
                             @change="
                                 handleAttachments
                             "
                         />
+
+                        <p
+                            class="mt-2 text-xs text-slate-400"
+                        >
+                            PDF or Word. Maximum 10 MB per file.
+                        </p>
                     </div>
 
                     <div
-                        class="flex justify-end gap-3 border-t pt-5"
+                        class="flex justify-end gap-3 border-t border-slate-200 pt-5"
                     >
                         <button
                             type="button"
-                            class="rounded-md border px-4 py-2 text-sm"
+                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                             @click="
                                 closeCreateModal
                             "
@@ -759,7 +859,10 @@ const deleteAssignment = (
 
                         <button
                             type="submit"
-                            class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
+                            :disabled="
+                                createForm.processing
+                            "
+                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
                         >
                             {{
                                 createForm.processing
@@ -772,27 +875,29 @@ const deleteAssignment = (
             </div>
         </div>
 
-        <!-- Drawer -->
+        <!-- Assignment drawer -->
         <div
             v-if="selectedAssignment"
             class="fixed inset-0 z-50"
         >
             <button
+                type="button"
                 class="absolute inset-0 bg-slate-950/20"
+                aria-label="Close"
                 @click="
                     closeAssignment
                 "
             ></button>
 
             <aside
-                class="absolute inset-y-0 right-0 w-full max-w-lg overflow-y-auto border-l bg-white p-6 shadow-xl"
+                class="absolute inset-y-0 right-0 w-full max-w-lg overflow-y-auto border-l border-slate-200 bg-white p-6 shadow-xl"
             >
                 <div
-                    class="flex justify-between gap-5"
+                    class="flex items-start justify-between gap-5"
                 >
                     <div>
                         <h2
-                            class="text-xl font-semibold"
+                            class="text-xl font-semibold text-slate-950"
                         >
                             {{
                                 selectedAssignment.title
@@ -806,7 +911,13 @@ const deleteAssignment = (
                                 selectedAssignment
                                     .student?.name
                             }}
-                            ·
+
+                            <span
+                                class="mx-1 text-slate-300"
+                            >
+                                ·
+                            </span>
+
                             {{
                                 selectedAssignment.subject
                             }}
@@ -814,6 +925,8 @@ const deleteAssignment = (
                     </div>
 
                     <button
+                        type="button"
+                        class="text-sm text-slate-500 hover:text-slate-950"
                         @click="
                             closeAssignment
                         "
@@ -822,6 +935,59 @@ const deleteAssignment = (
                     </button>
                 </div>
 
+                <dl
+                    class="mt-8 divide-y divide-slate-200 border-y border-slate-200"
+                >
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
+                            Status
+                        </dt>
+
+                        <dd>
+                            <span
+                                class="rounded-full px-2.5 py-1 text-xs font-medium"
+                                :class="
+                                    statusClasses(
+                                        selectedAssignment.status
+                                    )
+                                "
+                            >
+                                {{
+                                    statusLabel(
+                                        selectedAssignment.status
+                                    )
+                                }}
+                            </span>
+                        </dd>
+                    </div>
+
+                    <div
+                        class="flex justify-between gap-4 py-4"
+                    >
+                        <dt
+                            class="text-sm text-slate-500"
+                        >
+                            Deadline
+                        </dt>
+
+                        <dd
+                            class="text-sm font-medium text-slate-900"
+                        >
+                            {{
+                                selectedAssignment.deadline
+                                    ? formatDateTime(
+                                        selectedAssignment.deadline
+                                    )
+                                    : 'No deadline'
+                            }}
+                        </dd>
+                    </div>
+                </dl>
+
                 <section
                     v-if="
                         selectedAssignment.instructions
@@ -829,7 +995,7 @@ const deleteAssignment = (
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Instructions
                     </h3>
@@ -850,7 +1016,7 @@ const deleteAssignment = (
                     class="mt-8"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
                         Student submission
                     </h3>
@@ -871,9 +1037,10 @@ const deleteAssignment = (
                     <div
                         v-if="
                             selectedAssignment
-                                .submission.answer
+                                .submission
+                                .answer
                         "
-                        class="mt-5"
+                        class="mt-4 rounded-lg bg-slate-50 p-4"
                     >
                         <p
                             class="text-xs font-medium uppercase tracking-wide text-slate-400"
@@ -904,29 +1071,31 @@ const deleteAssignment = (
                                 .file_url
                         "
                         target="_blank"
-                        class="mt-5 inline-block text-sm font-medium underline underline-offset-4"
+                        rel="noopener noreferrer"
+                        class="mt-4 inline-block text-sm font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950"
                     >
                         Open submitted file
                     </a>
                 </section>
 
+                <!-- Review -->
                 <section
                     v-if="
                         selectedAssignment.submission
                     "
-                    class="mt-8 border-t pt-8"
+                    class="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5"
                 >
                     <h3
-                        class="text-sm font-semibold"
+                        class="text-sm font-semibold text-slate-900"
                     >
-                        Review
+                        Review submission
                     </h3>
 
                     <div
                         class="mt-4"
                     >
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Grade
                         </label>
@@ -951,13 +1120,24 @@ const deleteAssignment = (
                                 / 100
                             </span>
                         </div>
+
+                        <p
+                            v-if="
+                                reviewForm.errors.grade
+                            "
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                reviewForm.errors.grade
+                            }}
+                        </p>
                     </div>
 
                     <div
                         class="mt-4"
                     >
                         <label
-                            class="block text-sm font-medium"
+                            class="block text-sm font-medium text-slate-700"
                         >
                             Feedback
                         </label>
@@ -967,13 +1147,28 @@ const deleteAssignment = (
                                 reviewForm.feedback
                             "
                             rows="5"
-                            class="mt-2 block w-full rounded-md border-slate-300"
+                            placeholder="Add feedback for the student..."
+                            class="mt-2 block w-full resize-y rounded-md border-slate-300"
                         ></textarea>
+
+                        <p
+                            v-if="
+                                reviewForm.errors.feedback
+                            "
+                            class="mt-1 text-xs text-red-600"
+                        >
+                            {{
+                                reviewForm.errors.feedback
+                            }}
+                        </p>
                     </div>
 
                     <button
                         type="button"
-                        class="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
+                        :disabled="
+                            reviewForm.processing
+                        "
+                        class="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
                         @click="
                             saveReview
                         "
@@ -981,31 +1176,47 @@ const deleteAssignment = (
                         {{
                             reviewForm.processing
                                 ? 'Saving...'
-                                : 'Save grade'
+                                : selectedAssignment.status ===
+                                    'graded'
+                                    ? 'Update grade'
+                                    : 'Save grade'
                         }}
                     </button>
                 </section>
 
-                <p
+                <div
                     v-else
-                    class="mt-8 border-t pt-8 text-sm text-slate-500"
+                    class="mt-8 rounded-lg bg-slate-50 p-4"
                 >
-                    The student has not submitted work yet.
-                </p>
+                    <p
+                        class="text-sm text-slate-500"
+                    >
+                        The student has not submitted work yet.
+                    </p>
+                </div>
 
                 <div
-                    class="mt-10 border-t pt-6"
+                    class="mt-10 border-t border-slate-200 pt-6"
                 >
                     <button
                         type="button"
-                        class="text-sm font-medium text-red-600"
+                        :disabled="
+                            deletingAssignmentId ===
+                            selectedAssignment.id
+                        "
+                        class="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-40"
                         @click="
                             deleteAssignment(
                                 selectedAssignment
                             )
                         "
                     >
-                        Delete assignment
+                        {{
+                            deletingAssignmentId ===
+                            selectedAssignment.id
+                                ? 'Deleting...'
+                                : 'Delete assignment'
+                        }}
                     </button>
                 </div>
             </aside>
