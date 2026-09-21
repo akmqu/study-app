@@ -12,6 +12,7 @@ class Lesson extends Model
         'start_time',
         'end_time',
         'status',
+        'reminder_sent_at',
     ];
 
     protected function casts(): array
@@ -19,6 +20,7 @@ class Lesson extends Model
         return [
             'start_time' => 'datetime',
             'end_time' => 'datetime',
+            'reminder_sent_at' => 'datetime',
         ];
     }
 
