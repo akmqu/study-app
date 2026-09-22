@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -154,6 +155,21 @@ class SubmissionController extends Controller
                 null,
         ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Clear dashboard cache
+        |--------------------------------------------------------------------------
+        */
+
+        $this->clearDashboardCache(
+            $assignment
+                ->tutorStudent
+                ->tutor_id,
+            $assignment
+                ->tutorStudent
+                ->student_id
+        );
+
         return redirect()
             ->route(
                 'student.assignments'
@@ -232,6 +248,17 @@ class SubmissionController extends Controller
                 $validated['feedback']
                 ?? null,
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Clear dashboard cache
+        |--------------------------------------------------------------------------
+        */
+
+        $this->clearDashboardCache(
+            $tutorStudent->tutor_id,
+            $tutorStudent->student_id
+        );
 
         return redirect()
             ->route(
@@ -324,6 +351,19 @@ class SubmissionController extends Controller
             $submission
                 ->student_file_path,
             $fileName
+        );
+    }
+
+    private function clearDashboardCache(
+        int $tutorId,
+        int $studentId
+    ): void {
+        Cache::forget(
+            "tutor_dashboard_{$tutorId}"
+        );
+
+        Cache::forget(
+            "student_dashboard_{$studentId}"
         );
     }
 }

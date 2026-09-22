@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Models\TutorStudent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -19,190 +20,207 @@ class TutorController extends Controller
     {
         $tutor = auth()->user();
 
-        $students =
-            TutorStudent::query()
-                ->where(
-                    'tutor_id',
-                    $tutor->id
-                )
-                ->with(
-                    'student:id,name,email'
-                )
-                ->get()
-                ->groupBy(
-                    'student_id'
-                )
-                ->map(
-                    function (
-                        $relations
-                    ) {
-                        $first =
-                            $relations
-                                ->first();
+        $cacheKey =
+            "tutor_dashboard_{$tutor->id}";
 
-                        return [
-                            'id' =>
-                                $first
-                                    ->student_id,
+        $dashboardData =
+            Cache::remember(
+                $cacheKey,
+                now()->addMinute(),
+                function () use ($tutor): array {
+                    $students =
+                        TutorStudent::query()
+                            ->where(
+                                'tutor_id',
+                                $tutor->id
+                            )
+                            ->with(
+                                'student:id,name,email'
+                            )
+                            ->get()
+                            ->groupBy(
+                                'student_id'
+                            )
+                            ->map(
+                                function (
+                                    $relations
+                                ) {
+                                    $first =
+                                        $relations
+                                            ->first();
 
-                            'name' =>
-                                $first
-                                    ->student
-                                    ->name,
+                                    return [
+                                        'id' =>
+                                            $first
+                                                ->student_id,
 
-                            'email' =>
-                                $first
-                                    ->student
-                                    ->email,
+                                        'name' =>
+                                            $first
+                                                ->student
+                                                ->name,
 
-                            'subjects' =>
-                                $relations
-                                    ->pluck(
-                                        'subject'
+                                        'email' =>
+                                            $first
+                                                ->student
+                                                ->email,
+
+                                        'subjects' =>
+                                            $relations
+                                                ->pluck(
+                                                    'subject'
+                                                )
+                                                ->filter()
+                                                ->unique()
+                                                ->values()
+                                                ->all(),
+                                    ];
+                                }
+                            )
+                            ->sortBy('name')
+                            ->take(5)
+                            ->values()
+                            ->all();
+
+                    $upcomingLessons =
+                        Lesson::query()
+                            ->whereHas(
+                                'tutorStudent',
+                                fn ($query) =>
+                                    $query->where(
+                                        'tutor_id',
+                                        $tutor->id
                                     )
-                                    ->filter()
-                                    ->unique()
-                                    ->values(),
-                        ];
-                    }
-                )
-                ->sortBy('name')
-                ->take(5)
-                ->values();
+                            )
+                            ->where(
+                                'status',
+                                'scheduled'
+                            )
+                            ->where(
+                                'start_time',
+                                '>=',
+                                now()
+                            )
+                            ->with([
+                                'tutorStudent.student:id,name',
+                            ])
+                            ->orderBy(
+                                'start_time'
+                            )
+                            ->limit(3)
+                            ->get()
+                            ->map(
+                                fn (
+                                    Lesson $lesson
+                                ) => [
+                                    'id' =>
+                                        $lesson->id,
 
-        $upcomingLessons =
-            Lesson::query()
-                ->whereHas(
-                    'tutorStudent',
-                    fn ($query) =>
-                        $query->where(
-                            'tutor_id',
-                            $tutor->id
-                        )
-                )
-                ->where(
-                    'status',
-                    'scheduled'
-                )
-                ->where(
-                    'start_time',
-                    '>=',
-                    now()
-                )
-                ->with([
-                    'tutorStudent.student:id,name',
-                ])
-                ->orderBy(
-                    'start_time'
-                )
-                ->limit(3)
-                ->get()
-                ->map(
-                    fn (
-                        Lesson $lesson
-                    ) => [
-                        'id' =>
-                            $lesson->id,
+                                    'student_name' =>
+                                        $lesson
+                                            ->tutorStudent
+                                            ->student
+                                            ->name,
 
-                        'student_name' =>
-                            $lesson
-                                ->tutorStudent
-                                ->student
-                                ->name,
+                                    'subject' =>
+                                        $lesson
+                                            ->tutorStudent
+                                            ->subject,
 
-                        'subject' =>
-                            $lesson
-                                ->tutorStudent
-                                ->subject,
+                                    'start_time' =>
+                                        $lesson
+                                            ->start_time
+                                            ?->utc()
+                                            ->toIso8601String(),
 
-                        'start_time' =>
-                            $lesson
-                                ->start_time
-                                ?->utc()
-                                ->toIso8601String(),
+                                    'end_time' =>
+                                        $lesson
+                                            ->end_time
+                                            ?->utc()
+                                            ->toIso8601String(),
+                                ]
+                            )
+                            ->values()
+                            ->all();
 
-                        'end_time' =>
-                            $lesson
-                                ->end_time
-                                ?->utc()
-                                ->toIso8601String(),
-                    ]
-                );
+                    $pendingReviews =
+                        Assignment::query()
+                            ->whereHas(
+                                'tutorStudent',
+                                fn ($query) =>
+                                    $query->where(
+                                        'tutor_id',
+                                        $tutor->id
+                                    )
+                            )
+                            ->whereHas(
+                                'latestSubmission',
+                                fn ($query) =>
+                                    $query->where(
+                                        'status',
+                                        'awaiting_review'
+                                    )
+                            )
+                            ->with([
+                                'tutorStudent.student:id,name',
+                                'latestSubmission',
+                            ])
+                            ->get()
+                            ->sortByDesc(
+                                fn (
+                                    Assignment $assignment
+                                ) =>
+                                    $assignment
+                                        ->latestSubmission
+                                        ?->created_at
+                            )
+                            ->take(3)
+                            ->map(
+                                fn (
+                                    Assignment $assignment
+                                ) => [
+                                    'id' =>
+                                        $assignment->id,
 
-        $pendingReviews =
-            Assignment::query()
-                ->whereHas(
-                    'tutorStudent',
-                    fn ($query) =>
-                        $query->where(
-                            'tutor_id',
-                            $tutor->id
-                        )
-                )
-                ->whereHas(
-                    'latestSubmission',
-                    fn ($query) =>
-                        $query->where(
-                            'status',
-                            'awaiting_review'
-                        )
-                )
-                ->with([
-                    'tutorStudent.student:id,name',
-                    'latestSubmission',
-                ])
-                ->get()
-                ->sortByDesc(
-                    fn (
-                        Assignment $assignment
-                    ) =>
-                        $assignment
-                            ->latestSubmission
-                            ?->created_at
-                )
-                ->take(3)
-                ->map(
-                    fn (
-                        Assignment $assignment
-                    ) => [
-                        'id' =>
-                            $assignment->id,
+                                    'title' =>
+                                        $assignment->title,
 
-                        'title' =>
-                            $assignment->title,
+                                    'student_name' =>
+                                        $assignment
+                                            ->tutorStudent
+                                            ?->student
+                                            ?->name,
 
-                        'student_name' =>
-                            $assignment
-                                ->tutorStudent
-                                ?->student
-                                ?->name,
+                                    'subject' =>
+                                        $assignment
+                                            ->tutorStudent
+                                            ?->subject,
 
-                        'subject' =>
-                            $assignment
-                                ->tutorStudent
-                                ?->subject,
+                                    'submitted_at' =>
+                                        $assignment
+                                            ->latestSubmission
+                                            ?->created_at
+                                            ?->toIso8601String(),
+                                ]
+                            )
+                            ->values()
+                            ->all();
 
-                        'submitted_at' =>
-                            $assignment
-                                ->latestSubmission
-                                ?->created_at
-                                ?->toIso8601String(),
-                    ]
-                )
-                ->values();
+                    return [
+                        'students' =>
+                            $students,
+
+                        'upcomingLessons' =>
+                            $upcomingLessons,
+
+                        'pendingReviews' =>
+                            $pendingReviews,
+                    ];
+                }
+            );
 
         return Inertia::render(
             'Tutor/Dashboard',
-            [
-                'students' =>
-                    $students,
-
-                'upcomingLessons' =>
-                    $upcomingLessons,
-
-                'pendingReviews' =>
-                    $pendingReviews,
-            ]
+            $dashboardData
         );
     }
 
@@ -600,6 +618,11 @@ class TutorController extends Controller
             }
         );
 
+        $this->clearDashboardCache(
+            $tutor->id,
+            $tutorStudent->student_id
+        );
+
         return redirect()
             ->route(
                 'tutor.assignments'
@@ -628,6 +651,16 @@ class TutorController extends Controller
                     ->id,
             403
         );
+
+        $tutorId =
+            $assignment
+                ->tutorStudent
+                ->tutor_id;
+
+        $studentId =
+            $assignment
+                ->tutorStudent
+                ->student_id;
 
         $attachmentPaths =
             $assignment
@@ -689,6 +722,11 @@ class TutorController extends Controller
             );
         }
 
+        $this->clearDashboardCache(
+            $tutorId,
+            $studentId
+        );
+
         return redirect()
             ->route(
                 'tutor.assignments'
@@ -697,5 +735,18 @@ class TutorController extends Controller
                 'success',
                 'Homework deleted successfully.'
             );
+    }
+
+    private function clearDashboardCache(
+        int $tutorId,
+        int $studentId
+    ): void {
+        Cache::forget(
+            "tutor_dashboard_{$tutorId}"
+        );
+
+        Cache::forget(
+            "student_dashboard_{$studentId}"
+        );
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -19,86 +20,109 @@ class StudentController extends Controller
     {
         $student = auth()->user();
 
-        $tutors = $student
-            ->tutors()
-            ->orderBy('name')
-            ->get([
-                'users.id',
-                'users.name',
-                'users.email',
-            ])
-            ->map(fn ($tutor) => [
-                'id' =>
-                    $tutor->id,
+        $cacheKey =
+            "student_dashboard_{$student->id}";
 
-                'name' =>
-                    $tutor->name,
+        $dashboardData =
+            Cache::remember(
+                $cacheKey,
+                now()->addMinute(),
+                function () use ($student): array {
+                    $tutors =
+                        $student
+                            ->tutors()
+                            ->orderBy('name')
+                            ->get([
+                                'users.id',
+                                'users.name',
+                                'users.email',
+                            ])
+                            ->map(
+                                fn ($tutor) => [
+                                    'id' =>
+                                        $tutor->id,
 
-                'email' =>
-                    $tutor->email,
+                                    'name' =>
+                                        $tutor->name,
 
-                'subject' =>
-                    $tutor->pivot?->subject,
-            ]);
+                                    'email' =>
+                                        $tutor->email,
 
-        $upcomingAssignments =
-            Assignment::query()
-                ->whereHas(
-                    'tutorStudent',
-                    fn ($query) =>
-                        $query->where(
-                            'student_id',
-                            $student->id
-                        )
-                )
-                ->whereDoesntHave(
-                    'submissions'
-                )
-                ->where(function ($query) {
-                    $query
-                        ->whereNull(
-                            'deadline'
-                        )
-                        ->orWhere(
-                            'deadline',
-                            '>=',
-                            now()
-                        );
-                })
-                ->count();
+                                    'subject' =>
+                                        $tutor
+                                            ->pivot
+                                            ?->subject,
+                                ]
+                            )
+                            ->values()
+                            ->all();
 
-        $pendingReviews =
-            Assignment::query()
-                ->whereHas(
-                    'tutorStudent',
-                    fn ($query) =>
-                        $query->where(
-                            'student_id',
-                            $student->id
-                        )
-                )
-                ->whereHas(
-                    'latestSubmission',
-                    fn ($query) =>
-                        $query->where(
-                            'status',
-                            'awaiting_review'
-                        )
-                )
-                ->count();
+                    $upcomingAssignments =
+                        Assignment::query()
+                            ->whereHas(
+                                'tutorStudent',
+                                fn ($query) =>
+                                    $query->where(
+                                        'student_id',
+                                        $student->id
+                                    )
+                            )
+                            ->whereDoesntHave(
+                                'submissions'
+                            )
+                            ->where(
+                                function (
+                                    $query
+                                ) {
+                                    $query
+                                        ->whereNull(
+                                            'deadline'
+                                        )
+                                        ->orWhere(
+                                            'deadline',
+                                            '>=',
+                                            now()
+                                        );
+                                }
+                            )
+                            ->count();
+
+                    $pendingReviews =
+                        Assignment::query()
+                            ->whereHas(
+                                'tutorStudent',
+                                fn ($query) =>
+                                    $query->where(
+                                        'student_id',
+                                        $student->id
+                                    )
+                            )
+                            ->whereHas(
+                                'latestSubmission',
+                                fn ($query) =>
+                                    $query->where(
+                                        'status',
+                                        'awaiting_review'
+                                    )
+                            )
+                            ->count();
+
+                    return [
+                        'upcomingAssignments' =>
+                            $upcomingAssignments,
+
+                        'pendingReviews' =>
+                            $pendingReviews,
+
+                        'tutors' =>
+                            $tutors,
+                    ];
+                }
+            );
 
         return Inertia::render(
             'Student/Dashboard',
-            [
-                'upcomingAssignments' =>
-                    $upcomingAssignments,
-
-                'pendingReviews' =>
-                    $pendingReviews,
-
-                'tutors' =>
-                    $tutors,
-            ]
+            $dashboardData
         );
     }
 
