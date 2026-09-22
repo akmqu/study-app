@@ -4,6 +4,7 @@ use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentReportController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TutorController;
 use App\Http\Controllers\TutorStudentController;
@@ -78,16 +79,6 @@ Route::middleware('auth')
             ->name(
                 'assignment.attachments.show'
             );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Submission file
-        |--------------------------------------------------------------------------
-        |
-        | Both the related tutor and the related student
-        | can open the submitted file.
-        |
-        */
 
         Route::get(
             '/submissions/{submission}/file',
@@ -309,6 +300,20 @@ Route::middleware([
                 'tutor.students'
             );
 
+        Route::get(
+            '/students/{student}/report',
+            [
+                StudentReportController::class,
+                'download',
+            ]
+        )
+            ->whereNumber(
+                'student'
+            )
+            ->name(
+                'tutor.students.report'
+            );
+
         Route::delete(
             '/students/{student}',
             [
@@ -399,12 +404,6 @@ Route::middleware([
             ->name(
                 'student.assignments'
             );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Submit homework
-        |--------------------------------------------------------------------------
-        */
 
         Route::post(
             '/assignments/{assignment}/submission',

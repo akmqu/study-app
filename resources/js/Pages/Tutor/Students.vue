@@ -381,9 +381,7 @@ const formatBilling = (value) => {
                 </div>
 
                 <div
-                    v-if="
-                        students.length === 0
-                    "
+                    v-if="students.length === 0"
                     class="px-5 py-10"
                 >
                     <p
@@ -538,9 +536,7 @@ const formatBilling = (value) => {
                 </div>
 
                 <div
-                    v-if="
-                        invitations.length === 0
-                    "
+                    v-if="invitations.length === 0"
                     class="px-5 py-10 text-sm text-slate-500"
                 >
                     No active invitation codes.
@@ -800,8 +796,38 @@ const formatBilling = (value) => {
                     </div>
                 </dl>
 
+                <!-- PDF report -->
                 <div
-                    class="mt-8"
+                    class="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                    <h3
+                        class="text-sm font-semibold text-slate-900"
+                    >
+                        Progress report
+                    </h3>
+
+                    <p
+                        class="mt-1 text-sm leading-6 text-slate-500"
+                    >
+                        Generate a PDF with lesson statistics,
+                        assignments and grades for this student.
+                    </p>
+
+                    <a
+                        :href="
+                            route(
+                                'tutor.students.report',
+                                selectedStudent.id
+                            )
+                        "
+                        class="mt-4 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+                    >
+                        Download PDF report
+                    </a>
+                </div>
+
+                <div
+                    class="mt-8 border-t border-slate-200 pt-6"
                 >
                     <button
                         type="button"
