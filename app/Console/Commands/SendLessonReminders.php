@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SendLessonReminder;
 use App\Models\Lesson;
+use App\Services\TutorSettingsService;
 use Illuminate\Console\Command;
 
 class SendLessonReminders extends Command
@@ -14,16 +15,35 @@ class SendLessonReminders extends Command
     protected $description =
         'Queue reminder emails for upcoming lessons';
 
+    public function __construct(
+        private readonly TutorSettingsService $settingsService
+    ) {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
-        $now = now();
+        $now =
+            now();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Maximum reminder window
+        |--------------------------------------------------------------------------
+        |
+        | Current allowed settings:
+        | 15 / 30 / 60 / 120 minutes.
+        |
+        */
 
         $until =
             $now
                 ->copy()
-                ->addHour();
+                ->addMinutes(
+                    120
+                );
 
-        $lessonIds =
+        $lessons =
             Lesson::query()
                 ->where(
                     'status',
@@ -42,19 +62,72 @@ class SendLessonReminders extends Command
                     '<=',
                     $until
                 )
+                ->with([
+                    'tutorStudent:id,tutor_id',
+                ])
                 ->orderBy(
                     'start_time'
                 )
-                ->pluck('id');
+                ->get();
 
-        foreach ($lessonIds as $lessonId) {
+        $queued =
+            0;
+
+        foreach (
+            $lessons
+            as $lesson
+        ) {
+            $tutorId =
+                $lesson
+                    ->tutorStudent
+                    ?->tutor_id;
+
+            if (! $tutorId) {
+                continue;
+            }
+
+            $settings =
+                $this
+                    ->settingsService
+                    ->get(
+                        $tutorId
+                    );
+
+            if (
+                ! $settings[
+                    'lesson_reminders_enabled'
+                ]
+            ) {
+                continue;
+            }
+
+            $reminderAt =
+                $lesson
+                    ->start_time
+                    ->copy()
+                    ->subMinutes(
+                        $settings[
+                            'lesson_reminder_minutes'
+                        ]
+                    );
+
+            if (
+                $now->lt(
+                    $reminderAt
+                )
+            ) {
+                continue;
+            }
+
             SendLessonReminder::dispatch(
-                $lessonId
+                $lesson->id
             );
+
+            $queued++;
         }
 
         $this->info(
-            "Queued {$lessonIds->count()} lesson reminder(s)."
+            "Queued {$queued} lesson reminder(s)."
         );
 
         return self::SUCCESS;

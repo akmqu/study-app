@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Lesson;
 use App\Models\TutorStudent;
+use App\Services\TutorSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,9 +16,11 @@ use Inertia\Response;
 
 class LessonController extends Controller
 {
-    public function index(): Response
-    {
-        $tutor = Auth::user();
+    public function index(
+        TutorSettingsService $settingsService
+    ): Response {
+        $tutor =
+            Auth::user();
 
         /*
         |--------------------------------------------------------------------------
@@ -58,6 +61,17 @@ class LessonController extends Controller
                 $tutor->id
             );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settings
+        |--------------------------------------------------------------------------
+        */
+
+        $settings =
+            $settingsService->get(
+                $tutor->id
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -181,6 +195,11 @@ class LessonController extends Controller
 
                 'students' =>
                     $students,
+
+                'defaultLessonDuration' =>
+                    $settings[
+                        'default_lesson_duration'
+                    ],
             ]
         );
     }
@@ -328,8 +347,8 @@ class LessonController extends Controller
         );
 
         if (
-            $lesson->status
-            === 'scheduled'
+            $lesson->status ===
+            'scheduled'
         ) {
             $lesson->update([
                 'status' =>
@@ -363,8 +382,8 @@ class LessonController extends Controller
         );
 
         if (
-            $lesson->status
-            === 'scheduled'
+            $lesson->status ===
+            'scheduled'
         ) {
             $lesson->update([
                 'status' =>

@@ -37,6 +37,11 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+
+    defaultLessonDuration: {
+        type: Number,
+        default: 60,
+    },
 });
 
 const page = usePage();
@@ -66,6 +71,27 @@ const pad = (value) => {
     return String(value).padStart(2, '0');
 };
 
+const getDefaultLessonDuration = () => {
+    const duration =
+        Number(
+            props.defaultLessonDuration
+        );
+
+    if (
+        [
+            30,
+            45,
+            60,
+            90,
+            120,
+        ].includes(duration)
+    ) {
+        return duration;
+    }
+
+    return 60;
+};
+
 const formatDateInput = (date) => {
     return [
         date.getFullYear(),
@@ -85,12 +111,17 @@ const formatLessonDate = (value) => {
         return '';
     }
 
-    return new Intl.DateTimeFormat('en', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(new Date(value));
+    return new Intl.DateTimeFormat(
+        'en',
+        {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        }
+    ).format(
+        new Date(value)
+    );
 };
 
 const formatLessonTime = (value) => {
@@ -98,10 +129,15 @@ const formatLessonTime = (value) => {
         return '';
     }
 
-    return new Intl.DateTimeFormat('en', {
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(value));
+    return new Intl.DateTimeFormat(
+        'en',
+        {
+            hour: '2-digit',
+            minute: '2-digit',
+        }
+    ).format(
+        new Date(value)
+    );
 };
 
 /*
@@ -110,7 +146,8 @@ const formatLessonTime = (value) => {
 |--------------------------------------------------------------------------
 */
 
-const showLessonModal = ref(false);
+const showLessonModal =
+    ref(false);
 
 const lessonForm = useForm({
     student_id: '',
@@ -121,26 +158,38 @@ const lessonForm = useForm({
     timezone: browserTimeZone,
 });
 
-const selectedStudent = computed(() => {
-    return props.students.find(
-        (student) =>
-            String(student.id) ===
-            String(lessonForm.student_id)
-    );
-});
+const selectedStudent =
+    computed(() => {
+        return props.students.find(
+            (student) =>
+                String(student.id) ===
+                String(
+                    lessonForm.student_id
+                )
+        );
+    });
 
-const availableSubjects = computed(() => {
-    return selectedStudent.value?.subjects ?? [];
-});
+const availableSubjects =
+    computed(() => {
+        return (
+            selectedStudent.value
+                ?.subjects ?? []
+        );
+    });
 
 watch(
     () => lessonForm.student_id,
     () => {
         lessonForm.subject = '';
 
-        if (availableSubjects.value.length === 1) {
+        if (
+            availableSubjects
+                .value
+                .length === 1
+        ) {
             lessonForm.subject =
-                availableSubjects.value[0];
+                availableSubjects
+                    .value[0];
         }
     }
 );
@@ -149,50 +198,80 @@ const openLessonModal = (
     startDate = null,
     endDate = null
 ) => {
-    let start = startDate
-        ? new Date(startDate)
-        : new Date();
+    let start =
+        startDate
+            ? new Date(startDate)
+            : new Date();
 
-    if (!startDate) {
-        start.setSeconds(0, 0);
-        start.setMinutes(0);
-        start.setHours(start.getHours() + 1);
+    if (! startDate) {
+        start.setSeconds(
+            0,
+            0
+        );
+
+        start.setMinutes(
+            0
+        );
+
+        start.setHours(
+            start.getHours() + 1
+        );
     }
 
-    const end = endDate
-        ? new Date(endDate)
-        : new Date(
-            start.getTime() + 60 * 60 * 1000
-        );
+    const duration =
+        getDefaultLessonDuration();
+
+    const end =
+        endDate
+            ? new Date(endDate)
+            : new Date(
+                start.getTime()
+                    + duration
+                    * 60
+                    * 1000
+            );
 
     lessonForm.clearErrors();
 
-    lessonForm.student_id = '';
-    lessonForm.subject = '';
+    lessonForm.student_id =
+        '';
+
+    lessonForm.subject =
+        '';
 
     lessonForm.date =
-        formatDateInput(start);
+        formatDateInput(
+            start
+        );
 
     lessonForm.start_time =
-        formatTimeInput(start);
+        formatTimeInput(
+            start
+        );
 
     lessonForm.end_time =
-        formatTimeInput(end);
+        formatTimeInput(
+            end
+        );
 
     lessonForm.timezone =
         Intl.DateTimeFormat()
             .resolvedOptions()
             .timeZone || 'UTC';
 
-    showLessonModal.value = true;
+    showLessonModal.value =
+        true;
 };
 
 const closeLessonModal = () => {
-    if (lessonForm.processing) {
+    if (
+        lessonForm.processing
+    ) {
         return;
     }
 
-    showLessonModal.value = false;
+    showLessonModal.value =
+        false;
 
     lessonForm.reset();
 
@@ -205,26 +284,33 @@ const closeLessonModal = () => {
 };
 
 const submitLesson = () => {
-    if (lessonForm.processing) {
+    if (
+        lessonForm.processing
+    ) {
         return;
     }
 
     lessonForm.post(
-        route('tutor.lessons.store'),
+        route(
+            'tutor.lessons.store'
+        ),
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                showLessonModal.value = false;
+                showLessonModal.value =
+                    false;
 
                 lessonForm.reset();
 
                 lessonForm.timezone =
                     Intl.DateTimeFormat()
                         .resolvedOptions()
-                        .timeZone || 'UTC';
+                        .timeZone
+                    || 'UTC';
 
-                lessonForm.clearErrors();
+                lessonForm
+                    .clearErrors();
             },
         }
     );
@@ -236,24 +322,31 @@ const submitLesson = () => {
 |--------------------------------------------------------------------------
 */
 
-const handleDateClick = (info) => {
-    const start = new Date(info.date);
+const handleDateClick = (
+    info
+) => {
+    const start =
+        new Date(
+            info.date
+        );
 
     if (info.allDay) {
-        start.setHours(9, 0, 0, 0);
+        start.setHours(
+            9,
+            0,
+            0,
+            0
+        );
     }
 
-    const end = new Date(
-        start.getTime() + 60 * 60 * 1000
-    );
-
     openLessonModal(
-        start,
-        end
+        start
     );
 };
 
-const handleSelect = (info) => {
+const handleSelect = (
+    info
+) => {
     openLessonModal(
         info.start,
         info.end
@@ -266,34 +359,53 @@ const handleSelect = (info) => {
 |--------------------------------------------------------------------------
 */
 
-const showLessonDetailsModal = ref(false);
-const selectedLesson = ref(null);
-const lessonActionProcessing = ref(false);
+const showLessonDetailsModal =
+    ref(false);
 
-const openLessonDetails = (info) => {
-    const lesson = props.lessons.find(
-        (item) =>
-            String(item.id) ===
-            String(info.event.id)
-    );
+const selectedLesson =
+    ref(null);
 
-    if (!lesson) {
+const lessonActionProcessing =
+    ref(false);
+
+const openLessonDetails = (
+    info
+) => {
+    const lesson =
+        props.lessons.find(
+            (item) =>
+                String(item.id) ===
+                String(
+                    info.event.id
+                )
+        );
+
+    if (! lesson) {
         return;
     }
 
-    selectedLesson.value = lesson;
+    selectedLesson.value =
+        lesson;
 
-    showLessonDetailsModal.value = true;
+    showLessonDetailsModal.value =
+        true;
 };
 
-const closeLessonDetails = () => {
-    if (lessonActionProcessing.value) {
-        return;
-    }
+const closeLessonDetails =
+    () => {
+        if (
+            lessonActionProcessing
+                .value
+        ) {
+            return;
+        }
 
-    showLessonDetailsModal.value = false;
-    selectedLesson.value = null;
-};
+        showLessonDetailsModal.value =
+            false;
+
+        selectedLesson.value =
+            null;
+    };
 
 /*
 |--------------------------------------------------------------------------
@@ -301,63 +413,80 @@ const closeLessonDetails = () => {
 |--------------------------------------------------------------------------
 */
 
-const markLessonCompleted = () => {
-    if (
-        !selectedLesson.value ||
-        lessonActionProcessing.value
-    ) {
-        return;
-    }
-
-    lessonActionProcessing.value = true;
-
-    router.patch(
-        route(
-            'tutor.lessons.complete',
-            selectedLesson.value.id
-        ),
-        {},
-        {
-            preserveScroll: true,
-
-            onSuccess: () => {
-                showLessonDetailsModal.value = false;
-                selectedLesson.value = null;
-            },
-
-            onFinish: () => {
-                lessonActionProcessing.value = false;
-            },
+const markLessonCompleted =
+    () => {
+        if (
+            ! selectedLesson.value
+            || lessonActionProcessing
+                .value
+        ) {
+            return;
         }
-    );
-};
+
+        lessonActionProcessing.value =
+            true;
+
+        router.patch(
+            route(
+                'tutor.lessons.complete',
+                selectedLesson
+                    .value
+                    .id
+            ),
+            {},
+            {
+                preserveScroll: true,
+
+                onSuccess: () => {
+                    showLessonDetailsModal.value =
+                        false;
+
+                    selectedLesson.value =
+                        null;
+                },
+
+                onFinish: () => {
+                    lessonActionProcessing.value =
+                        false;
+                },
+            }
+        );
+    };
 
 const cancelLesson = () => {
     if (
-        !selectedLesson.value ||
-        lessonActionProcessing.value
+        ! selectedLesson.value
+        || lessonActionProcessing
+            .value
     ) {
         return;
     }
 
-    lessonActionProcessing.value = true;
+    lessonActionProcessing.value =
+        true;
 
     router.patch(
         route(
             'tutor.lessons.cancel',
-            selectedLesson.value.id
+            selectedLesson
+                .value
+                .id
         ),
         {},
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                showLessonDetailsModal.value = false;
-                selectedLesson.value = null;
+                showLessonDetailsModal.value =
+                    false;
+
+                selectedLesson.value =
+                    null;
             },
 
             onFinish: () => {
-                lessonActionProcessing.value = false;
+                lessonActionProcessing.value =
+                    false;
             },
         }
     );
@@ -365,37 +494,46 @@ const cancelLesson = () => {
 
 const deleteLesson = () => {
     if (
-        !selectedLesson.value ||
-        lessonActionProcessing.value
+        ! selectedLesson.value
+        || lessonActionProcessing
+            .value
     ) {
         return;
     }
 
-    const confirmed = window.confirm(
-        'Delete this lesson permanently?'
-    );
+    const confirmed =
+        window.confirm(
+            'Delete this lesson permanently?'
+        );
 
-    if (!confirmed) {
+    if (! confirmed) {
         return;
     }
 
-    lessonActionProcessing.value = true;
+    lessonActionProcessing.value =
+        true;
 
     router.delete(
         route(
             'tutor.lessons.destroy',
-            selectedLesson.value.id
+            selectedLesson
+                .value
+                .id
         ),
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                showLessonDetailsModal.value = false;
-                selectedLesson.value = null;
+                showLessonDetailsModal.value =
+                    false;
+
+                selectedLesson.value =
+                    null;
             },
 
             onFinish: () => {
-                lessonActionProcessing.value = false;
+                lessonActionProcessing.value =
+                    false;
             },
         }
     );
@@ -407,56 +545,75 @@ const deleteLesson = () => {
 |--------------------------------------------------------------------------
 */
 
-const getLessonColor = (status) => {
-    if (status === 'completed') {
+const getLessonColor = (
+    status
+) => {
+    if (
+        status ===
+        'completed'
+    ) {
         return '#64748b';
     }
 
-    if (status === 'cancelled') {
+    if (
+        status ===
+        'cancelled'
+    ) {
         return '#cbd5e1';
     }
 
     return '#0f172a';
 };
 
-const calendarEvents = computed(() => {
-    return props.lessons.map((lesson) => {
-        return {
-            id: String(lesson.id),
+const calendarEvents =
+    computed(() => {
+        return props.lessons.map(
+            (lesson) => {
+                return {
+                    id:
+                        String(
+                            lesson.id
+                        ),
 
-            title: lesson.subject
-                ? `${lesson.student_name} · ${lesson.subject}`
-                : lesson.student_name,
+                    title:
+                        lesson.subject
+                            ? `${lesson.student_name} · ${lesson.subject}`
+                            : lesson.student_name,
 
-            start: lesson.start_time,
+                    start:
+                        lesson.start_time,
 
-            end: lesson.end_time,
+                    end:
+                        lesson.end_time,
 
-            color:
-                getLessonColor(
-                    lesson.status
-                ),
+                    color:
+                        getLessonColor(
+                            lesson.status
+                        ),
 
-            contrastColor: '#ffffff',
+                    contrastColor:
+                        '#ffffff',
 
-            display: 'block',
+                    display:
+                        'block',
 
-            extendedProps: {
-                studentId:
-                    lesson.student_id,
+                    extendedProps: {
+                        studentId:
+                            lesson.student_id,
 
-                studentName:
-                    lesson.student_name,
+                        studentName:
+                            lesson.student_name,
 
-                subject:
-                    lesson.subject,
+                        subject:
+                            lesson.subject,
 
-                status:
-                    lesson.status,
-            },
-        };
+                        status:
+                            lesson.status,
+                    },
+                };
+            }
+        );
     });
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -464,23 +621,33 @@ const calendarEvents = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-let lessonRefreshTimer = null;
+let lessonRefreshTimer =
+    null;
 
 onMounted(() => {
-    lessonRefreshTimer = window.setInterval(
-        () => {
-            router.reload({
-                only: ['lessons'],
-                preserveScroll: true,
-                preserveState: true,
-            });
-        },
-        60 * 1000
-    );
+    lessonRefreshTimer =
+        window.setInterval(
+            () => {
+                router.reload({
+                    only: [
+                        'lessons',
+                    ],
+
+                    preserveScroll:
+                        true,
+
+                    preserveState:
+                        true,
+                });
+            },
+            60 * 1000
+        );
 });
 
 onUnmounted(() => {
-    if (lessonRefreshTimer) {
+    if (
+        lessonRefreshTimer
+    ) {
         window.clearInterval(
             lessonRefreshTimer
         );
@@ -493,88 +660,112 @@ onUnmounted(() => {
 |--------------------------------------------------------------------------
 */
 
-const calendarOptions = computed(() => ({
-    plugins: [
-        classicThemePlugin,
-        dayGridPlugin,
-        timeGridPlugin,
-        interactionPlugin,
-    ],
+const calendarOptions =
+    computed(() => ({
+        plugins: [
+            classicThemePlugin,
+            dayGridPlugin,
+            timeGridPlugin,
+            interactionPlugin,
+        ],
 
-    timeZone: 'local',
+        timeZone:
+            'local',
 
-    initialView: 'timeGridWeek',
+        initialView:
+            'timeGridWeek',
 
-    headerToolbar: {
-        start: 'prev,next today',
-        center: 'title',
-        end: 'dayGridMonth,timeGridWeek',
-    },
+        headerToolbar: {
+            start:
+                'prev,next today',
 
-    buttons: {
-        today: {
-            text: 'Today',
+            center:
+                'title',
+
+            end:
+                'dayGridMonth,timeGridWeek',
         },
 
-        dayGridMonth: {
-            text: 'Month',
+        buttons: {
+            today: {
+                text:
+                    'Today',
+            },
+
+            dayGridMonth: {
+                text:
+                    'Month',
+            },
+
+            timeGridWeek: {
+                text:
+                    'Week',
+            },
         },
 
-        timeGridWeek: {
-            text: 'Week',
-        },
-    },
+        firstDay:
+            1,
 
-    firstDay: 1,
+        height:
+            'auto',
 
-    height: 'auto',
+        expandRows:
+            true,
 
-    expandRows: true,
+        nowIndicator:
+            true,
 
-    nowIndicator: true,
+        selectable:
+            true,
 
-    selectable: true,
+        selectMirror:
+            true,
 
-    selectMirror: true,
+        allDaySlot:
+            false,
 
-    allDaySlot: false,
+        slotMinTime:
+            '07:00:00',
 
-    slotMinTime: '07:00:00',
+        slotMaxTime:
+            '22:00:00',
 
-    slotMaxTime: '22:00:00',
+        slotDuration:
+            '00:30:00',
 
-    slotDuration: '00:30:00',
+        slotLabelInterval:
+            '01:00:00',
 
-    slotLabelInterval: '01:00:00',
+        weekends:
+            true,
 
-    weekends: true,
+        eventDisplay:
+            'block',
 
-    eventDisplay: 'block',
+        dateClick:
+            handleDateClick,
 
-    dateClick:
-        handleDateClick,
+        select:
+            handleSelect,
 
-    select:
-        handleSelect,
+        eventClick:
+            openLessonDetails,
 
-    eventClick:
-        openLessonDetails,
+        events:
+            calendarEvents.value,
 
-    events:
-        calendarEvents.value,
+        toolbarClass:
+            'tutorly-calendar-toolbar',
 
-    toolbarClass:
-        'tutorly-calendar-toolbar',
+        toolbarTitleClass:
+            'tutorly-calendar-title',
 
-    toolbarTitleClass:
-        'tutorly-calendar-title',
+        toolbarSectionClass:
+            'tutorly-calendar-section',
 
-    toolbarSectionClass:
-        'tutorly-calendar-section',
-
-    buttonClass:
-        'tutorly-calendar-button',
-}));
+        buttonClass:
+            'tutorly-calendar-button',
+    }));
 </script>
 
 <template>
@@ -582,7 +773,6 @@ const calendarOptions = computed(() => ({
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-6xl">
-            <!-- Heading -->
             <header
                 class="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between"
             >
@@ -609,7 +799,6 @@ const calendarOptions = computed(() => ({
                 </button>
             </header>
 
-            <!-- Success -->
             <div
                 v-if="successMessage"
                 class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
@@ -617,7 +806,6 @@ const calendarOptions = computed(() => ({
                 {{ successMessage }}
             </div>
 
-            <!-- Calendar -->
             <section class="mt-8">
                 <div
                     class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
@@ -638,7 +826,6 @@ const calendarOptions = computed(() => ({
                             <span
                                 class="h-2 w-2 rounded-full bg-slate-900"
                             ></span>
-
                             Scheduled
                         </span>
 
@@ -648,7 +835,6 @@ const calendarOptions = computed(() => ({
                             <span
                                 class="h-2 w-2 rounded-full bg-slate-500"
                             ></span>
-
                             Completed
                         </span>
 
@@ -658,7 +844,6 @@ const calendarOptions = computed(() => ({
                             <span
                                 class="h-2 w-2 rounded-full bg-slate-300"
                             ></span>
-
                             Cancelled
                         </span>
                     </div>
@@ -676,7 +861,6 @@ const calendarOptions = computed(() => ({
             </section>
         </div>
 
-        <!-- Add lesson modal -->
         <Modal
             :show="showLessonModal"
             max-width="lg"
@@ -714,7 +898,6 @@ const calendarOptions = computed(() => ({
                     class="mt-6 space-y-5"
                     @submit.prevent="submitLesson"
                 >
-                    <!-- Student -->
                     <div>
                         <label
                             for="lesson-student"
@@ -753,7 +936,6 @@ const calendarOptions = computed(() => ({
                         </p>
                     </div>
 
-                    <!-- Subject -->
                     <div>
                         <label
                             for="lesson-subject"
@@ -797,7 +979,6 @@ const calendarOptions = computed(() => ({
                         </p>
                     </div>
 
-                    <!-- Date -->
                     <div>
                         <label
                             for="lesson-date"
@@ -822,7 +1003,6 @@ const calendarOptions = computed(() => ({
                         </p>
                     </div>
 
-                    <!-- Time -->
                     <div
                         class="grid gap-4 sm:grid-cols-2"
                     >
@@ -839,16 +1019,9 @@ const calendarOptions = computed(() => ({
                                 v-model="lessonForm.start_time"
                                 type="time"
                                 required
-                                step="900"
+                                step="60"
                                 class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                             />
-
-                            <p
-                                v-if="lessonForm.errors.start_time"
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{ lessonForm.errors.start_time }}
-                            </p>
                         </div>
 
                         <div>
@@ -864,27 +1037,21 @@ const calendarOptions = computed(() => ({
                                 v-model="lessonForm.end_time"
                                 type="time"
                                 required
-                                step="900"
+                                step="60"
                                 class="block w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:ring-slate-500"
                             />
-
-                            <p
-                                v-if="lessonForm.errors.end_time"
-                                class="mt-1.5 text-xs text-red-600"
-                            >
-                                {{ lessonForm.errors.end_time }}
-                            </p>
                         </div>
                     </div>
 
                     <p
                         class="text-xs text-slate-400"
                     >
-                        Timezone:
+                        Default duration:
+                        {{ defaultLessonDuration }}
+                        minutes · Timezone:
                         {{ browserTimeZone }}
                     </p>
 
-                    <!-- Actions -->
                     <div
                         class="flex justify-end gap-3 border-t border-slate-200 pt-5"
                     >
@@ -913,7 +1080,6 @@ const calendarOptions = computed(() => ({
             </div>
         </Modal>
 
-        <!-- Lesson details modal -->
         <Modal
             :show="showLessonDetailsModal"
             max-width="lg"
@@ -923,7 +1089,6 @@ const calendarOptions = computed(() => ({
                 v-if="selectedLesson"
                 class="p-6"
             >
-                <!-- Header -->
                 <div
                     class="flex items-start justify-between gap-4"
                 >
@@ -951,22 +1116,17 @@ const calendarOptions = computed(() => ({
                     </button>
                 </div>
 
-                <!-- Details -->
                 <dl
                     class="mt-6 divide-y divide-slate-200"
                 >
                     <div
                         class="flex items-center justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Student
                         </dt>
 
-                        <dd
-                            class="text-sm font-medium text-slate-900"
-                        >
+                        <dd class="text-sm font-medium text-slate-900">
                             {{ selectedLesson.student_name }}
                         </dd>
                     </div>
@@ -974,15 +1134,11 @@ const calendarOptions = computed(() => ({
                     <div
                         class="flex items-center justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Subject
                         </dt>
 
-                        <dd
-                            class="text-sm font-medium text-slate-900"
-                        >
+                        <dd class="text-sm font-medium text-slate-900">
                             {{
                                 selectedLesson.subject ||
                                 '—'
@@ -993,9 +1149,7 @@ const calendarOptions = computed(() => ({
                     <div
                         class="flex items-center justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Date
                         </dt>
 
@@ -1013,15 +1167,11 @@ const calendarOptions = computed(() => ({
                     <div
                         class="flex items-center justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Time
                         </dt>
 
-                        <dd
-                            class="text-sm font-medium text-slate-900"
-                        >
+                        <dd class="text-sm font-medium text-slate-900">
                             {{
                                 formatLessonTime(
                                     selectedLesson.start_time
@@ -1039,9 +1189,7 @@ const calendarOptions = computed(() => ({
                     <div
                         class="flex items-center justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Status
                         </dt>
 
@@ -1076,7 +1224,6 @@ const calendarOptions = computed(() => ({
                     </div>
                 </dl>
 
-                <!-- Actions -->
                 <div
                     class="mt-7 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between"
                 >

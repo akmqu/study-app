@@ -37,6 +37,11 @@ const navigation = computed(() => {
                 route: 'tutor.assignments',
                 active: 'tutor.assignments*',
             },
+            {
+    label: 'Settings',
+    route: 'tutor.settings.edit',
+    active: 'tutor.settings.*',
+},
         ];
     }
 

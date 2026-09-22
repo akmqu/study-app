@@ -14,7 +14,8 @@ class LessonReminderMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Lesson $lesson
+        public Lesson $lesson,
+        public int $reminderMinutes
     ) {
     }
 

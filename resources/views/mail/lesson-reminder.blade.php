@@ -15,6 +15,16 @@
         color: #0f172a;
     "
 >
+    @php
+        $reminderText = match ($reminderMinutes) {
+            15 => '15 minutes',
+            30 => '30 minutes',
+            60 => '1 hour',
+            120 => '2 hours',
+            default => $reminderMinutes . ' minutes',
+        };
+    @endphp
+
     <div
         style="
             max-width: 560px;
@@ -68,7 +78,10 @@
             <strong>
                 {{ $lesson->tutorStudent->tutor->name }}
             </strong>
-            starts within the next hour.
+            starts in
+            <strong>
+                {{ $reminderText }}
+            </strong>.
         </p>
 
         <p

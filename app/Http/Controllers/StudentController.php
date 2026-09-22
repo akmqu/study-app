@@ -6,6 +6,7 @@ use App\Http\Requests\Student\RedeemInvitationRequest;
 use App\Models\Assignment;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\TutorSettingsService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
@@ -18,7 +19,8 @@ class StudentController extends Controller
 {
     public function dashboard(): Response
     {
-        $student = auth()->user();
+        $student =
+            auth()->user();
 
         $cacheKey =
             "student_dashboard_{$student->id}";
@@ -31,7 +33,9 @@ class StudentController extends Controller
                     $tutors =
                         $student
                             ->tutors()
-                            ->orderBy('name')
+                            ->orderBy(
+                                'name'
+                            )
                             ->get([
                                 'users.id',
                                 'users.name',
@@ -127,7 +131,8 @@ class StudentController extends Controller
     }
 
     public function redeemInvitation(
-        RedeemInvitationRequest $request
+        RedeemInvitationRequest $request,
+        TutorSettingsService $settingsService
     ): RedirectResponse {
         $student =
             $request->user();
@@ -139,91 +144,122 @@ class StudentController extends Controller
                 )
             );
 
-        DB::transaction(
-            function () use (
-                $student,
-                $normalizedCode
-            ): void {
-                $invitation =
-                    Invitation::query()
-                        ->whereRaw(
-                            'UPPER(TRIM(code)) = ?',
-                            [
-                                $normalizedCode,
-                            ]
-                        )
-                        ->lockForUpdate()
-                        ->first();
+        $tutorId =
+            DB::transaction(
+                function () use (
+                    $student,
+                    $normalizedCode,
+                    $settingsService
+                ): int {
+                    $invitation =
+                        Invitation::query()
+                            ->whereRaw(
+                                'UPPER(TRIM(code)) = ?',
+                                [
+                                    $normalizedCode,
+                                ]
+                            )
+                            ->lockForUpdate()
+                            ->first();
 
-                if (
-                    ! $invitation
-                    || ! $invitation
-                        ->isAcceptableBy(
-                            $student
-                        )
-                ) {
-                    throw ValidationException::withMessages([
-                        'code' =>
-                            'That invitation code is not available.',
-                    ]);
-                }
+                    if (
+                        ! $invitation
+                        || ! $invitation
+                            ->isAcceptableBy(
+                                $student
+                            )
+                    ) {
+                        throw ValidationException::withMessages([
+                            'code' =>
+                                'That invitation code is not available.',
+                        ]);
+                    }
 
-                $tutorIsValid =
-                    User::query()
-                        ->whereKey(
+                    $tutorIsValid =
+                        User::query()
+                            ->whereKey(
+                                $invitation
+                                    ->tutor_id
+                            )
+                            ->where(
+                                'role',
+                                'tutor'
+                            )
+                            ->exists();
+
+                    if (! $tutorIsValid) {
+                        throw ValidationException::withMessages([
+                            'code' =>
+                                'That invitation code is not available.',
+                        ]);
+                    }
+
+                    $settings =
+                        $settingsService->get(
                             $invitation
                                 ->tutor_id
-                        )
-                        ->where(
-                            'role',
-                            'tutor'
-                        )
-                        ->exists();
-
-                if (! $tutorIsValid) {
-                    throw ValidationException::withMessages([
-                        'code' =>
-                            'That invitation code is not available.',
-                    ]);
-                }
-
-                $invitation->update([
-                    'status' =>
-                        Invitation::STATUS_ACCEPTED,
-
-                    'student_id' =>
-                        $student->id,
-                ]);
-
-                $pivotData = [
-                    'subject' =>
-                        $invitation->subject,
-                ];
-
-                if (
-                    $invitation->price !==
-                    null
-                ) {
-                    $pivotData[
-                        'lesson_price'
-                    ] =
-                        $invitation->price;
-                }
-
-                try {
-                    $student
-                        ->tutors()
-                        ->attach(
-                            $invitation
-                                ->tutor_id,
-                            $pivotData
                         );
-                } catch (
-                    UniqueConstraintViolationException
-                ) {
-                    // Relation already exists.
+
+                    $invitation->update([
+                        'status' =>
+                            Invitation::STATUS_ACCEPTED,
+
+                        'student_id' =>
+                            $student->id,
+                    ]);
+
+                    $pivotData = [
+                        'subject' =>
+                            $invitation->subject,
+
+                        'billing_type' =>
+                            $settings[
+                                'default_billing_type'
+                            ],
+                    ];
+
+                    if (
+                        $invitation->price !==
+                        null
+                    ) {
+                        $pivotData[
+                            'lesson_price'
+                        ] =
+                            $invitation->price;
+                    }
+
+                    try {
+                        $student
+                            ->tutors()
+                            ->attach(
+                                $invitation
+                                    ->tutor_id,
+                                $pivotData
+                            );
+                    } catch (
+                        UniqueConstraintViolationException
+                    ) {
+                        // Relation already exists.
+                    }
+
+                    return
+                        $invitation
+                            ->tutor_id;
                 }
-            }
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Relationship changed → dashboards are stale
+        |--------------------------------------------------------------------------
+        */
+
+        Cache::forget(
+            "student_dashboard_{$student->id}"
+        );
+
+        Cache::forget(
+            "tutor_dashboard_{$tutorId}"
         );
 
         return redirect()
@@ -238,7 +274,8 @@ class StudentController extends Controller
 
     public function assignments(): Response
     {
-        $student = auth()->user();
+        $student =
+            auth()->user();
 
         $assignments =
             Assignment::query()
@@ -274,7 +311,8 @@ class StudentController extends Controller
                                 ->latestSubmission;
 
                         $status =
-                            $submission?->status
+                            $submission
+                                ?->status
                             ?? 'todo';
 
                         if (
@@ -298,7 +336,8 @@ class StudentController extends Controller
                                 ->map(
                                     fn ($attachment) => [
                                         'id' =>
-                                            $attachment->id,
+                                            $attachment
+                                                ->id,
 
                                         'name' =>
                                             $attachment
@@ -372,7 +411,8 @@ class StudentController extends Controller
                                 $status,
 
                             'grade' =>
-                                $submission?->grade,
+                                $submission
+                                    ?->grade,
 
                             'feedback' =>
                                 $submission

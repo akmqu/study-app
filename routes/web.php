@@ -7,6 +7,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentReportController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TutorController;
+use App\Http\Controllers\TutorSettingController;
 use App\Http\Controllers\TutorStudentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -357,6 +358,34 @@ Route::middleware([
             )
             ->name(
                 'tutor.invitations.destroy'
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Settings
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/settings',
+            [
+                TutorSettingController::class,
+                'edit',
+            ]
+        )
+            ->name(
+                'tutor.settings.edit'
+            );
+
+        Route::patch(
+            '/settings',
+            [
+                TutorSettingController::class,
+                'update',
+            ]
+        )
+            ->name(
+                'tutor.settings.update'
             );
     });
 
