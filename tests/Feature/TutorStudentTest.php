@@ -81,6 +81,7 @@ test('tutors can generate a unique invitation code', function () {
     $second->assertRedirect(route('tutor.students'));
 
     $codes = Invitation::query()->where('tutor_id', $tutor->id)->pluck('code');
+
     expect($codes->unique()->count())->toBe(2);
 });
 
@@ -97,9 +98,12 @@ test('students can accept a valid invitation code', function () {
         'expires_at' => now()->addDay(),
     ]);
 
-    $response = $this->actingAs($student)->post(route('student.invitations.redeem'), [
-        'code' => '  abcd1234  ',
-    ]);
+    $response = $this->actingAs($student)->post(
+        route('student.invitations.redeem'),
+        [
+            'code' => '  abcd1234  ',
+        ]
+    );
 
     $response->assertRedirect(route('student.dashboard'));
 
@@ -108,7 +112,12 @@ test('students can accept a valid invitation code', function () {
     expect($invitation->status)->toBe(Invitation::STATUS_ACCEPTED)
         ->and($invitation->student_id)->toBe($student->id);
 
-    $this->assertTrue($tutor->students()->where('users.id', $student->id)->exists());
+    $this->assertTrue(
+        $tutor->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
+
     $this->assertDatabaseCount('tutor_student', 1);
 });
 
@@ -127,11 +136,17 @@ test('invitation codes cannot be reused', function () {
         'expires_at' => now()->addDay(),
     ]);
 
-    $this->actingAs($otherStudent)->post(route('student.invitations.redeem'), [
-        'code' => 'USEDCODE',
-    ])->assertSessionHasErrors('code');
+    $this->actingAs($otherStudent)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'USEDCODE',
+        ])
+        ->assertSessionHasErrors('code');
 
-    $this->assertFalse($tutor->students()->where('users.id', $otherStudent->id)->exists());
+    $this->assertFalse(
+        $tutor->students()
+            ->where('users.id', $otherStudent->id)
+            ->exists()
+    );
 });
 
 test('expired invitation codes cannot be accepted', function () {
@@ -147,11 +162,17 @@ test('expired invitation codes cannot be accepted', function () {
         'expires_at' => now()->subMinute(),
     ]);
 
-    $this->actingAs($student)->post(route('student.invitations.redeem'), [
-        'code' => 'EXPIRED1',
-    ])->assertSessionHasErrors('code');
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'EXPIRED1',
+        ])
+        ->assertSessionHasErrors('code');
 
-    $this->assertFalse($tutor->students()->where('users.id', $student->id)->exists());
+    $this->assertFalse(
+        $tutor->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
 });
 
 test('tutors can delete their own unused invitation code', function () {
@@ -188,13 +209,20 @@ test('deleted invitation codes cannot be accepted', function () {
         'expires_at' => now()->addDay(),
     ]);
 
-    $this->actingAs($tutor)->delete(route('tutor.invitations.destroy', $invitation));
+    $this->actingAs($tutor)
+        ->delete(route('tutor.invitations.destroy', $invitation));
 
-    $this->actingAs($student)->post(route('student.invitations.redeem'), [
-        'code' => 'REVOKED1',
-    ])->assertSessionHasErrors('code');
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'REVOKED1',
+        ])
+        ->assertSessionHasErrors('code');
 
-    $this->assertFalse($tutor->students()->where('users.id', $student->id)->exists());
+    $this->assertFalse(
+        $tutor->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
 });
 
 test('tutors cannot delete another tutors invitation code', function () {
@@ -215,6 +243,7 @@ test('tutors cannot delete another tutors invitation code', function () {
         ->assertNotFound();
 
     $invitation->refresh();
+
     expect($invitation->status)->toBe(Invitation::STATUS_PENDING);
 });
 
@@ -241,17 +270,119 @@ test('a student can belong to multiple tutors via invitation codes', function ()
         'expires_at' => now()->addDay(),
     ]);
 
-    $this->actingAs($student)->post(route('student.invitations.redeem'), [
-        'code' => 'TUTORA01',
-    ])->assertRedirect(route('student.dashboard'));
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'TUTORA01',
+        ])
+        ->assertRedirect(route('student.dashboard'));
 
-    $this->actingAs($student)->post(route('student.invitations.redeem'), [
-        'code' => 'TUTORB01',
-    ])->assertRedirect(route('student.dashboard'));
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'TUTORB01',
+        ])
+        ->assertRedirect(route('student.dashboard'));
 
-    $this->assertTrue($tutorA->students()->where('users.id', $student->id)->exists());
-    $this->assertTrue($tutorB->students()->where('users.id', $student->id)->exists());
+    $this->assertTrue(
+        $tutorA->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
+
+    $this->assertTrue(
+        $tutorB->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
+
     $this->assertDatabaseCount('tutor_student', 2);
+});
+
+test('a student can study multiple subjects with the same tutor', function () {
+    $tutor = User::factory()->tutor()->create();
+    $student = User::factory()->student()->create();
+
+    Invitation::query()->create([
+        'tutor_id' => $tutor->id,
+        'code' => 'MATH0001',
+        'student_name' => 'Shared',
+        'subject' => 'Mathematics',
+        'price' => 120,
+        'status' => Invitation::STATUS_PENDING,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    Invitation::query()->create([
+        'tutor_id' => $tutor->id,
+        'code' => 'ENG00001',
+        'student_name' => 'Shared',
+        'subject' => 'English',
+        'price' => 80,
+        'status' => Invitation::STATUS_PENDING,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'MATH0001',
+        ])
+        ->assertRedirect(route('student.dashboard'));
+
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'ENG00001',
+        ])
+        ->assertRedirect(route('student.dashboard'));
+
+    $this->assertDatabaseHas('tutor_student', [
+        'tutor_id' => $tutor->id,
+        'student_id' => $student->id,
+        'subject' => 'Mathematics',
+    ]);
+
+    $this->assertDatabaseHas('tutor_student', [
+        'tutor_id' => $tutor->id,
+        'student_id' => $student->id,
+        'subject' => 'English',
+    ]);
+
+    $this->assertDatabaseCount('tutor_student', 2);
+});
+
+test('a student cannot join the same tutor for the same subject twice', function () {
+    $tutor = User::factory()->tutor()->create();
+    $student = User::factory()->student()->create();
+
+    Invitation::query()->create([
+        'tutor_id' => $tutor->id,
+        'code' => 'FIRST001',
+        'student_name' => 'Learner',
+        'subject' => 'Math',
+        'status' => Invitation::STATUS_PENDING,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    Invitation::query()->create([
+        'tutor_id' => $tutor->id,
+        'code' => 'SECOND01',
+        'student_name' => 'Learner',
+        'subject' => 'math',
+        'status' => Invitation::STATUS_PENDING,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'FIRST001',
+        ])
+        ->assertRedirect(route('student.dashboard'));
+
+    $this->actingAs($student)
+        ->post(route('student.invitations.redeem'), [
+            'code' => 'SECOND01',
+        ])
+        ->assertSessionHasErrors('code');
+
+    $this->assertDatabaseCount('tutor_student', 1);
 });
 
 test('removing a student does not delete the user or another tutors relationship', function () {
@@ -264,15 +395,26 @@ test('removing a student does not delete the user or another tutors relationship
     $tutorA->students()->attach($alice->id);
     $tutorB->students()->attach($alice->id);
 
-    $this->actingAs($tutorA)->delete(route('tutor.students.destroy', $alice));
+    $this->actingAs($tutorA)
+        ->delete(route('tutor.students.destroy', $alice));
 
     $this->assertDatabaseHas('users', [
         'id' => $alice->id,
         'email' => 'alice@example.com',
         'role' => 'student',
     ]);
-    $this->assertFalse($tutorA->students()->where('users.id', $alice->id)->exists());
-    $this->assertTrue($tutorB->students()->where('users.id', $alice->id)->exists());
+
+    $this->assertFalse(
+        $tutorA->students()
+            ->where('users.id', $alice->id)
+            ->exists()
+    );
+
+    $this->assertTrue(
+        $tutorB->students()
+            ->where('users.id', $alice->id)
+            ->exists()
+    );
 });
 
 test('email based student linking is no longer available', function () {
@@ -282,10 +424,16 @@ test('email based student linking is no longer available', function () {
     ]);
 
     $this->actingAs($tutor)
-        ->post('/tutor/students', ['email' => 'learner@example.com'])
+        ->post('/tutor/students', [
+            'email' => 'learner@example.com',
+        ])
         ->assertMethodNotAllowed();
 
-    $this->assertFalse($tutor->students()->where('users.id', $student->id)->exists());
+    $this->assertFalse(
+        $tutor->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
 });
 
 test('students can refresh their dashboard after a tutor removes the relationship', function () {
@@ -294,7 +442,8 @@ test('students can refresh their dashboard after a tutor removes the relationshi
 
     $tutor->students()->attach($student->id);
 
-    $this->actingAs($tutor)->delete(route('tutor.students.destroy', $student));
+    $this->actingAs($tutor)
+        ->delete(route('tutor.students.destroy', $student));
 
     $this->actingAs($student)
         ->get(route('student.dashboard'))
@@ -303,11 +452,14 @@ test('students can refresh their dashboard after a tutor removes the relationshi
             ->component('Student/Dashboard')
             ->has('tutors', 0));
 
-    $this->actingAs($student)->get(route('tutor.students'))->assertForbidden();
+    $this->actingAs($student)
+        ->get(route('tutor.students'))
+        ->assertForbidden();
 });
 
 test('unauthenticated users cannot access tutor student management', function () {
     $student = User::factory()->student()->create();
+
     $invitation = Invitation::query()->create([
         'tutor_id' => User::factory()->tutor()->create()->id,
         'code' => 'GUEST001',
@@ -317,18 +469,25 @@ test('unauthenticated users cannot access tutor student management', function ()
         'expires_at' => now()->addDay(),
     ]);
 
-    $this->get(route('tutor.students'))->assertRedirect(route('login'));
+    $this->get(route('tutor.students'))
+        ->assertRedirect(route('login'));
+
     $this->post(route('tutor.invitations.store'), [
         'student_name' => 'A',
         'subject' => 'B',
     ])->assertRedirect(route('login'));
-    $this->delete(route('tutor.students.destroy', $student))->assertRedirect(route('login'));
-    $this->delete(route('tutor.invitations.destroy', $invitation))->assertRedirect(route('login'));
+
+    $this->delete(route('tutor.students.destroy', $student))
+        ->assertRedirect(route('login'));
+
+    $this->delete(route('tutor.invitations.destroy', $invitation))
+        ->assertRedirect(route('login'));
 });
 
 test('students cannot access tutor student management', function () {
     $student = User::factory()->student()->create();
     $otherStudent = User::factory()->student()->create();
+
     $invitation = Invitation::query()->create([
         'tutor_id' => User::factory()->tutor()->create()->id,
         'code' => 'BLOCK001',
@@ -338,29 +497,72 @@ test('students cannot access tutor student management', function () {
         'expires_at' => now()->addDay(),
     ]);
 
-    $this->actingAs($student)->get(route('tutor.students'))->assertForbidden();
-    $this->actingAs($student)->post(route('tutor.invitations.store'), [
-        'student_name' => 'A',
-        'subject' => 'B',
-    ])->assertForbidden();
-    $this->actingAs($student)->delete(route('tutor.students.destroy', $otherStudent))->assertForbidden();
-    $this->actingAs($student)->delete(route('tutor.invitations.destroy', $invitation))->assertForbidden();
+    $this->actingAs($student)
+        ->get(route('tutor.students'))
+        ->assertForbidden();
+
+    $this->actingAs($student)
+        ->post(route('tutor.invitations.store'), [
+            'student_name' => 'A',
+            'subject' => 'B',
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($student)
+        ->delete(route('tutor.students.destroy', $otherStudent))
+        ->assertForbidden();
+
+    $this->actingAs($student)
+        ->delete(route('tutor.invitations.destroy', $invitation))
+        ->assertForbidden();
 });
 
 test('students logging in ignore a stale tutor intended url after unlink flows', function () {
     $student = User::factory()->student()->create();
 
-    $this->get(route('tutor.students'))->assertRedirect(route('login'));
+    $this->get(route('tutor.students'))
+        ->assertRedirect(route('login'));
 
     $this->post('/login', [
         'email' => $student->email,
         'password' => 'password',
-    ])->assertRedirect(route('student.dashboard', absolute: false));
+    ])->assertRedirect(
+        route('student.dashboard', absolute: false)
+    );
 
-    $this->get(route('student.dashboard'))->assertOk();
+    $this->get(route('student.dashboard'))
+        ->assertOk();
 });
 
-test('tutor_student has unique tutor and student pair constraint', function () {
+test('tutor_student allows the same student and tutor for different subjects', function () {
+    $tutor = User::factory()->tutor()->create();
+    $student = User::factory()->student()->create();
+
+    DB::table('tutor_student')->insert([
+        [
+            'tutor_id' => $tutor->id,
+            'student_id' => $student->id,
+            'subject' => 'Mathematics',
+            'lesson_price' => 100,
+            'billing_type' => 'per_lesson',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+        [
+            'tutor_id' => $tutor->id,
+            'student_id' => $student->id,
+            'subject' => 'English',
+            'lesson_price' => 80,
+            'billing_type' => 'per_lesson',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    $this->assertDatabaseCount('tutor_student', 2);
+});
+
+test('tutor_student keeps unique tutor student and subject constraint', function () {
     $indexes = collect(DB::select(
         'select indexname, indexdef from pg_indexes where tablename = ?',
         ['tutor_student'],
@@ -368,8 +570,15 @@ test('tutor_student has unique tutor and student pair constraint', function () {
 
     expect(
         $indexes->contains(
-            fn ($index) => str_contains($index->indexname, 'tutor_id_student_id_unique')
-                && str_contains(strtolower($index->indexdef), 'unique')
+            fn ($index) =>
+                str_contains(
+                    $index->indexname,
+                    'tutor_id_student_id_subject_unique'
+                )
+                && str_contains(
+                    strtolower($index->indexdef),
+                    'unique'
+                )
         )
     )->toBeTrue();
 });
@@ -394,5 +603,9 @@ test('deleting an accepted invitation is rejected and keeps the relationship', f
         ->delete(route('tutor.invitations.destroy', $invitation))
         ->assertSessionHasErrors('invitation');
 
-    $this->assertTrue($tutor->students()->where('users.id', $student->id)->exists());
+    $this->assertTrue(
+        $tutor->students()
+            ->where('users.id', $student->id)
+            ->exists()
+    );
 });

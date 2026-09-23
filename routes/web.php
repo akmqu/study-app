@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InvitationImportController;
 use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\PaymentController;
@@ -184,6 +185,11 @@ Route::middleware(['auth', 'role:tutor'])
             [TutorStudentController::class, 'storeInvitation']
         )
             ->name('tutor.invitations.store');
+
+        Route::post(
+    '/invitations/import',
+    [InvitationImportController::class, 'store']
+)->name('tutor.invitations.import');
 
         Route::delete(
             '/invitations/{invitation}',
