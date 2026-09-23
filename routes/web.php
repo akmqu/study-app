@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ProfileController;
@@ -387,6 +388,34 @@ Route::middleware([
             ->name(
                 'tutor.settings.update'
             );
+        
+            /*
+|--------------------------------------------------------------------------
+| Payments
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/payments',
+    [
+        PaymentController::class,
+        'tutorIndex',
+    ]
+)
+    ->name(
+        'tutor.payments'
+    );
+
+Route::post(
+    '/payments',
+    [
+        PaymentController::class,
+        'store',
+    ]
+)
+    ->name(
+        'tutor.payments.store'
+    );
     });
 
 /*
@@ -447,6 +476,22 @@ Route::middleware([
             ->name(
                 'student.assignments.submit'
             );
+        /*
+|--------------------------------------------------------------------------
+| Payments
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/payments',
+    [
+        PaymentController::class,
+        'studentIndex',
+    ]
+)
+    ->name(
+        'student.payments'
+    );
     });
 
 require __DIR__.'/auth.php';

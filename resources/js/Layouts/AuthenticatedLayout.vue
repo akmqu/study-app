@@ -42,6 +42,11 @@ const navigation = computed(() => {
     route: 'tutor.settings.edit',
     active: 'tutor.settings.*',
 },
+{
+    label: 'Payments',
+    route: 'tutor.payments',
+    active: 'tutor.payments*',
+},
         ];
     }
 
@@ -56,6 +61,11 @@ const navigation = computed(() => {
             route: 'student.assignments',
             active: 'student.assignments*',
         },
+        {
+    label: 'Payments',
+    route: 'student.payments',
+    active: 'student.payments*',
+},
     ];
 });
 
