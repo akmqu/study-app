@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lesson;
+use App\Models\Payment;
 use App\Models\TutorStudent;
+use App\Services\LessonBillingService;
 use App\Services\TutorSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,46 +24,6 @@ class LessonController extends Controller
     ): Response {
         $tutor =
             Auth::user();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Automatically complete past lessons
-        |--------------------------------------------------------------------------
-        */
-
-        $completedLessons =
-            Lesson::query()
-                ->whereHas(
-                    'tutorStudent',
-                    function ($query) use ($tutor) {
-                        $query->where(
-                            'tutor_id',
-                            $tutor->id
-                        );
-                    }
-                )
-                ->where(
-                    'status',
-                    'scheduled'
-                )
-                ->whereNotNull(
-                    'end_time'
-                )
-                ->where(
-                    'end_time',
-                    '<=',
-                    now()
-                )
-                ->update([
-                    'status' =>
-                        'completed',
-                ]);
-
-        if ($completedLessons > 0) {
-            $this->clearTutorDashboardCache(
-                $tutor->id
-            );
-        }
 
         /*
         |--------------------------------------------------------------------------
@@ -181,7 +144,8 @@ class LessonController extends Controller
                                     ->toIso8601String(),
 
                             'status' =>
-                                $lesson->status,
+                                $lesson
+                                    ->status,
                         ];
                     }
                 )
@@ -274,7 +238,9 @@ class LessonController extends Controller
         $startTime =
             Carbon::createFromFormat(
                 '!Y-m-d H:i',
-                $validated['date']
+                $validated[
+                    'date'
+                ]
                     . ' '
                     . $validated[
                         'start_time'
@@ -287,7 +253,9 @@ class LessonController extends Controller
         $endTime =
             Carbon::createFromFormat(
                 '!Y-m-d H:i',
-                $validated['date']
+                $validated[
+                    'date'
+                ]
                     . ' '
                     . $validated[
                         'end_time'
@@ -339,7 +307,8 @@ class LessonController extends Controller
 
     public function complete(
         Request $request,
-        Lesson $lesson
+        Lesson $lesson,
+        LessonBillingService $billingService
     ): RedirectResponse {
         $this->ensureLessonBelongsToTutor(
             $request,
@@ -350,15 +319,8 @@ class LessonController extends Controller
             $lesson->status ===
             'scheduled'
         ) {
-            $lesson->update([
-                'status' =>
-                    'completed',
-            ]);
-
-            $this->clearTutorDashboardCache(
-                $request
-                    ->user()
-                    ->id
+            $billingService->complete(
+                $lesson
             );
         }
 
@@ -390,10 +352,16 @@ class LessonController extends Controller
                     'cancelled',
             ]);
 
-            $this->clearTutorDashboardCache(
-                $request
-                    ->user()
-                    ->id
+            $relationship =
+                $lesson
+                    ->tutorStudent;
+
+            $this->clearDashboardCaches(
+                $relationship
+                    ->tutor_id,
+
+                $relationship
+                    ->student_id
             );
         }
 
@@ -416,15 +384,193 @@ class LessonController extends Controller
             $lesson
         );
 
-        $tutorId =
-            $request
-                ->user()
-                ->id;
+        $result =
+            DB::transaction(
+                function () use (
+                    $lesson
+                ): array {
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Lock lesson
+                    |--------------------------------------------------------------------------
+                    */
 
-        $lesson->delete();
+                    $lockedLesson =
+                        Lesson::query()
+                            ->with(
+                                'tutorStudent'
+                            )
+                            ->lockForUpdate()
+                            ->findOrFail(
+                                $lesson->id
+                            );
 
-        $this->clearTutorDashboardCache(
-            $tutorId
+                    $relationship =
+                        $lockedLesson
+                            ->tutorStudent;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Lock related payment
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $payment =
+                        null;
+
+                    if (
+                        $lockedLesson
+                            ->payment_id !==
+                        null
+                    ) {
+                        $payment =
+                            Payment::query()
+                                ->lockForUpdate()
+                                ->find(
+                                    $lockedLesson
+                                        ->payment_id
+                                );
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Paid financial history cannot be silently removed
+                    |--------------------------------------------------------------------------
+                    */
+
+                    if (
+                        $payment
+                        &&
+                        $payment
+                            ->status ===
+                            'paid'
+                    ) {
+                        throw ValidationException::withMessages([
+                            'lesson' =>
+                                'This lesson has already been paid and cannot be deleted.',
+                        ]);
+                    }
+
+                    $paymentChanged =
+                        $payment !==
+                        null;
+
+                    $paymentId =
+                        $payment
+                            ?->id;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Delete lesson
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $lockedLesson
+                        ->delete();
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Recalculate pending payment
+                    |--------------------------------------------------------------------------
+                    |
+                    | Per lesson:
+                    |   no lessons remain -> delete payment.
+                    |
+                    | Monthly:
+                    |   recalculate amount and lesson_count from remaining lessons.
+                    |
+                    */
+
+                    if (
+                        $payment
+                        &&
+                        $paymentId
+                    ) {
+                        $remainingLessons =
+                            Lesson::query()
+                                ->where(
+                                    'payment_id',
+                                    $paymentId
+                                )
+                                ->where(
+                                    'status',
+                                    'completed'
+                                )
+                                ->orderBy(
+                                    'id'
+                                )
+                                ->lockForUpdate()
+                                ->get();
+
+                        if (
+                            $remainingLessons
+                                ->isEmpty()
+                        ) {
+                            $payment
+                                ->delete();
+                        } else {
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Calculate in cents
+                            |--------------------------------------------------------------------------
+                            */
+
+                            $amountInCents =
+                                $remainingLessons
+                                    ->sum(
+                                        function (
+                                            Lesson $remainingLesson
+                                        ): int {
+                                            return
+                                                (int) round(
+                                                    (float)
+                                                    $remainingLesson
+                                                        ->billing_amount
+                                                    * 100
+                                                );
+                                        }
+                                    );
+
+                            $payment->update([
+                                'amount' =>
+                                    number_format(
+                                        $amountInCents
+                                            / 100,
+                                        2,
+                                        '.',
+                                        ''
+                                    ),
+
+                                'lesson_count' =>
+                                    $remainingLessons
+                                        ->count(),
+                            ]);
+                        }
+                    }
+
+                    return [
+                        'tutor_id' =>
+                            $relationship
+                                ->tutor_id,
+
+                        'student_id' =>
+                            $relationship
+                                ->student_id,
+
+                        'payment_changed' =>
+                            $paymentChanged,
+                    ];
+                }
+            );
+
+        $this->clearDashboardCaches(
+            $result[
+                'tutor_id'
+            ],
+
+            $result[
+                'student_id'
+            ]
         );
 
         return redirect()
@@ -433,7 +579,11 @@ class LessonController extends Controller
             )
             ->with(
                 'success',
-                'Lesson deleted successfully.'
+                $result[
+                    'payment_changed'
+                ]
+                    ? 'Lesson deleted and pending payment recalculated.'
+                    : 'Lesson deleted successfully.'
             );
     }
 
@@ -466,6 +616,19 @@ class LessonController extends Controller
     ): void {
         Cache::forget(
             "tutor_dashboard_{$tutorId}"
+        );
+    }
+
+    private function clearDashboardCaches(
+        int $tutorId,
+        int $studentId
+    ): void {
+        Cache::forget(
+            "tutor_dashboard_{$tutorId}"
+        );
+
+        Cache::forget(
+            "student_dashboard_{$studentId}"
         );
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\TutorStudent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,6 +30,9 @@ class PaymentController extends Controller
                 ->orderBy(
                     'student_id'
                 )
+                ->orderBy(
+                    'subject'
+                )
                 ->get()
                 ->map(
                     fn (
@@ -48,7 +52,8 @@ class PaymentController extends Controller
                                 ?->email,
 
                         'subject' =>
-                            $relationship->subject,
+                            $relationship
+                                ->subject,
 
                         'lesson_price' =>
                             $relationship
@@ -111,6 +116,14 @@ class PaymentController extends Controller
                         'period' =>
                             $payment->period,
 
+                        'billing_type' =>
+                            $payment
+                                ->billing_type,
+
+                        'lesson_count' =>
+                            $payment
+                                ->lesson_count,
+
                         'status' =>
                             $payment->status,
 
@@ -143,73 +156,51 @@ class PaymentController extends Controller
         );
     }
 
-    public function store(
-        Request $request
+    public function updateBilling(
+        Request $request,
+        TutorStudent $relationship
     ): RedirectResponse {
-        $tutor =
-            $request->user();
+        abort_unless(
+            $relationship->tutor_id ===
+                $request->user()->id,
+            403
+        );
 
         $validated =
             $request->validate([
-                'tutor_student_id' => [
-                    'required',
-                    'integer',
-                ],
-
-                'amount' => [
+                'lesson_price' => [
                     'required',
                     'numeric',
-                    'min:1',
+                    'min:0',
                     'max:999999.99',
                 ],
 
-                'period' => [
+                'billing_type' => [
                     'required',
                     'string',
-                    'max:100',
+                    'in:per_lesson,monthly',
                 ],
             ]);
 
-        $relationship =
-            TutorStudent::query()
-                ->whereKey(
-                    $validated[
-                        'tutor_student_id'
-                    ]
-                )
-                ->where(
-                    'tutor_id',
-                    $tutor->id
-                )
-                ->first();
-
-        if (! $relationship) {
-            abort(403);
-        }
-
-        Payment::create([
-            'tutor_student_id' =>
-                $relationship->id,
-
-            'amount' =>
+        $relationship->update([
+            'lesson_price' =>
                 $validated[
-                    'amount'
+                    'lesson_price'
                 ],
 
-            'currency' =>
-                'pln',
-
-            'period' =>
+            'billing_type' =>
                 $validated[
-                    'period'
+                    'billing_type'
                 ],
-
-            'status' =>
-                'pending',
-
-            'payment_method' =>
-                null,
         ]);
+
+        Cache::forget(
+            "tutor_dashboard_{$relationship->tutor_id}"
+        );
+
+        Cache::forget(
+            "student_dashboard_{$relationship->student_id}"
+        );
 
         return redirect()
             ->route(
@@ -217,7 +208,7 @@ class PaymentController extends Controller
             )
             ->with(
                 'success',
-                'Payment request created successfully.'
+                'Billing settings updated.'
             );
     }
 
@@ -276,6 +267,14 @@ class PaymentController extends Controller
 
                         'period' =>
                             $payment->period,
+
+                        'billing_type' =>
+                            $payment
+                                ->billing_type,
+
+                        'lesson_count' =>
+                            $payment
+                                ->lesson_count,
 
                         'status' =>
                             $payment->status,

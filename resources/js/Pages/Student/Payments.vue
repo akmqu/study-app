@@ -3,14 +3,53 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 import {
     Head,
+    router,
 } from '@inertiajs/vue3';
 
-const props = defineProps({
+import {
+    ref,
+} from 'vue';
+
+defineProps({
     payments: {
         type: Array,
         default: () => [],
     },
 });
+
+const payingPaymentId =
+    ref(null);
+
+const pay = (
+    payment
+) => {
+    if (
+        payingPaymentId.value
+        !== null
+    ) {
+        return;
+    }
+
+    payingPaymentId.value =
+        payment.id;
+
+    router.post(
+        route(
+            'student.payments.checkout',
+            payment.id
+        ),
+        {},
+        {
+            preserveScroll:
+                true,
+
+            onFinish: () => {
+                payingPaymentId.value =
+                    null;
+            },
+        }
+    );
+};
 
 const formatMoney = (
     amount,
@@ -65,7 +104,9 @@ const formatDate = (
     <Head title="Payments" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-6xl">
+        <div
+            class="mx-auto max-w-6xl"
+        >
             <header>
                 <h1
                     class="text-2xl font-semibold tracking-tight text-slate-950"
@@ -76,7 +117,7 @@ const formatDate = (
                 <p
                     class="mt-1.5 text-sm text-slate-500"
                 >
-                    View and pay requests from your tutors.
+                    View and pay your outstanding balances.
                 </p>
             </header>
 
@@ -91,6 +132,12 @@ const formatDate = (
                     >
                         Payment requests
                     </h2>
+
+                    <p
+                        class="mt-1 text-sm text-slate-500"
+                    >
+                        Payments are generated automatically from your completed lessons.
+                    </p>
                 </div>
 
                 <div
@@ -119,7 +166,9 @@ const formatDate = (
                 >
                     <div
                         v-for="payment in payments"
-                        :key="payment.id"
+                        :key="
+                            payment.id
+                        "
                         class="flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                         <div>
@@ -158,9 +207,27 @@ const formatDate = (
                                 {{
                                     payment.tutor_name
                                 }}
+
                                 ·
+
                                 {{
                                     payment.period
+                                }}
+                            </p>
+
+                            <p
+                                v-if="
+                                    payment.lesson_count
+                                "
+                                class="mt-1 text-xs text-slate-500"
+                            >
+                                {{
+                                    payment.lesson_count
+                                }}
+                                {{
+                                    payment.lesson_count === 1
+                                        ? 'lesson'
+                                        : 'lessons'
                                 }}
                             </p>
 
@@ -196,11 +263,31 @@ const formatDate = (
                                     'pending'
                                 "
                                 type="button"
-                                disabled
-                                class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white opacity-50"
+                                :disabled="
+                                    payingPaymentId !==
+                                    null
+                                "
+                                class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                @click="
+                                    pay(
+                                        payment
+                                    )
+                                "
                             >
-                                Pay with Stripe
+                                {{
+                                    payingPaymentId ===
+                                    payment.id
+                                        ? 'Opening Stripe...'
+                                        : 'Pay with Stripe'
+                                }}
                             </button>
+
+                            <span
+                                v-else
+                                class="text-sm font-medium text-emerald-700"
+                            >
+                                Payment completed
+                            </span>
                         </div>
                     </div>
                 </div>

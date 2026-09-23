@@ -13,19 +13,39 @@ class Lesson extends Model
         'end_time',
         'status',
         'reminder_sent_at',
+        'billing_amount',
+        'billing_type',
+        'payment_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'start_time' => 'datetime',
-            'end_time' => 'datetime',
-            'reminder_sent_at' => 'datetime',
+            'start_time' =>
+                'datetime',
+
+            'end_time' =>
+                'datetime',
+
+            'reminder_sent_at' =>
+                'datetime',
+
+            'billing_amount' =>
+                'decimal:2',
         ];
     }
 
     public function tutorStudent(): BelongsTo
     {
-        return $this->belongsTo(TutorStudent::class);
+        return $this->belongsTo(
+            TutorStudent::class
+        );
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(
+            Payment::class
+        );
     }
 }

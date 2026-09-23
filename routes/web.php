@@ -1,9 +1,11 @@
 <?php
 
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StripeCheckoutController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentReportController;
 use App\Http\Controllers\SubmissionController;
@@ -15,50 +17,24 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render(
-        'Welcome',
-        [
-            'canLogin' =>
-                Route::has('login'),
-
-            'canRegister' =>
-                Route::has('register'),
-
-            'laravelVersion' =>
-                Application::VERSION,
-
-            'phpVersion' =>
-                PHP_VERSION,
-        ]
-    );
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
 });
 
-Route::get(
-    '/dashboard',
-    function () {
-        $user = auth()->user();
+Route::get('/dashboard', function () {
+    $user = auth()->user();
 
-        if (
-            $user &&
-            $user->role === 'tutor'
-        ) {
-            return redirect()
-                ->route(
-                    'tutor.dashboard'
-                );
-        }
-
-        return redirect()
-            ->route(
-                'student.dashboard'
-            );
-    }
-)
-    ->middleware([
-        'auth',
-        'verified',
-    ])
+    return $user?->role === 'tutor'
+        ? redirect()->route('tutor.dashboard')
+        : redirect()->route('student.dashboard');
+})
+    ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -66,69 +42,31 @@ Route::get(
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')
-    ->group(function () {
-        Route::get(
-            '/assignment-attachments/{attachment}',
-            [
-                AssignmentAttachmentController::class,
-                'show',
-            ]
-        )
-            ->whereNumber(
-                'attachment'
-            )
-            ->name(
-                'assignment.attachments.show'
-            );
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/assignment-attachments/{attachment}',
+        [AssignmentAttachmentController::class, 'show']
+    )
+        ->whereNumber('attachment')
+        ->name('assignment.attachments.show');
 
-        Route::get(
-            '/submissions/{submission}/file',
-            [
-                SubmissionController::class,
-                'show',
-            ]
-        )
-            ->whereNumber(
-                'submission'
-            )
-            ->name(
-                'submissions.show'
-            );
+    Route::get(
+        '/submissions/{submission}/file',
+        [SubmissionController::class, 'show']
+    )
+        ->whereNumber('submission')
+        ->name('submissions.show');
 
-        Route::get(
-            '/profile',
-            [
-                ProfileController::class,
-                'edit',
-            ]
-        )
-            ->name(
-                'profile.edit'
-            );
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
 
-        Route::patch(
-            '/profile',
-            [
-                ProfileController::class,
-                'update',
-            ]
-        )
-            ->name(
-                'profile.update'
-            );
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
 
-        Route::delete(
-            '/profile',
-            [
-                ProfileController::class,
-                'destroy',
-            ]
-        )
-            ->name(
-                'profile.destroy'
-            );
-    });
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->name('profile.destroy');
+});
+
 
 /*
 |--------------------------------------------------------------------------
@@ -136,22 +74,19 @@ Route::middleware('auth')
 |--------------------------------------------------------------------------
 */
 
-Route::middleware([
-    'auth',
-    'role:tutor',
-])
+Route::middleware(['auth', 'role:tutor'])
     ->prefix('tutor')
     ->group(function () {
-        Route::get(
-            '/dashboard',
-            [
-                TutorController::class,
-                'dashboard',
-            ]
-        )
-            ->name(
-                'tutor.dashboard'
-            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/dashboard', [TutorController::class, 'dashboard'])
+            ->name('tutor.dashboard');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -159,69 +94,33 @@ Route::middleware([
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-            '/calendar',
-            [
-                LessonController::class,
-                'index',
-            ]
-        )
-            ->name(
-                'tutor.calendar'
-            );
+        Route::get('/calendar', [LessonController::class, 'index'])
+            ->name('tutor.calendar');
 
-        Route::post(
-            '/lessons',
-            [
-                LessonController::class,
-                'store',
-            ]
-        )
-            ->name(
-                'tutor.lessons.store'
-            );
+        Route::post('/lessons', [LessonController::class, 'store'])
+            ->name('tutor.lessons.store');
 
         Route::patch(
             '/lessons/{lesson}/complete',
-            [
-                LessonController::class,
-                'complete',
-            ]
+            [LessonController::class, 'complete']
         )
-            ->whereNumber(
-                'lesson'
-            )
-            ->name(
-                'tutor.lessons.complete'
-            );
+            ->whereNumber('lesson')
+            ->name('tutor.lessons.complete');
 
         Route::patch(
             '/lessons/{lesson}/cancel',
-            [
-                LessonController::class,
-                'cancel',
-            ]
+            [LessonController::class, 'cancel']
         )
-            ->whereNumber(
-                'lesson'
-            )
-            ->name(
-                'tutor.lessons.cancel'
-            );
+            ->whereNumber('lesson')
+            ->name('tutor.lessons.cancel');
 
         Route::delete(
             '/lessons/{lesson}',
-            [
-                LessonController::class,
-                'destroy',
-            ]
+            [LessonController::class, 'destroy']
         )
-            ->whereNumber(
-                'lesson'
-            )
-            ->name(
-                'tutor.lessons.destroy'
-            );
+            ->whereNumber('lesson')
+            ->name('tutor.lessons.destroy');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -229,61 +128,26 @@ Route::middleware([
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-            '/assignments',
-            [
-                TutorController::class,
-                'assignments',
-            ]
-        )
-            ->name(
-                'tutor.assignments'
-            );
+        Route::get('/assignments', [TutorController::class, 'assignments'])
+            ->name('tutor.assignments');
 
-        Route::post(
-            '/assignments',
-            [
-                TutorController::class,
-                'storeAssignment',
-            ]
-        )
-            ->name(
-                'tutor.assignments.store'
-            );
+        Route::post('/assignments', [TutorController::class, 'storeAssignment'])
+            ->name('tutor.assignments.store');
 
         Route::delete(
             '/assignments/{assignment}',
-            [
-                TutorController::class,
-                'destroyAssignment',
-            ]
+            [TutorController::class, 'destroyAssignment']
         )
-            ->whereNumber(
-                'assignment'
-            )
-            ->name(
-                'tutor.assignments.destroy'
-            );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Grade submission
-        |--------------------------------------------------------------------------
-        */
+            ->whereNumber('assignment')
+            ->name('tutor.assignments.destroy');
 
         Route::patch(
             '/submissions/{submission}/grade',
-            [
-                SubmissionController::class,
-                'grade',
-            ]
+            [SubmissionController::class, 'grade']
         )
-            ->whereNumber(
-                'submission'
-            )
-            ->name(
-                'tutor.submissions.grade'
-            );
+            ->whereNumber('submission')
+            ->name('tutor.submissions.grade');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -291,44 +155,23 @@ Route::middleware([
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-            '/students',
-            [
-                TutorStudentController::class,
-                'index',
-            ]
-        )
-            ->name(
-                'tutor.students'
-            );
+        Route::get('/students', [TutorStudentController::class, 'index'])
+            ->name('tutor.students');
 
         Route::get(
             '/students/{student}/report',
-            [
-                StudentReportController::class,
-                'download',
-            ]
+            [StudentReportController::class, 'download']
         )
-            ->whereNumber(
-                'student'
-            )
-            ->name(
-                'tutor.students.report'
-            );
+            ->whereNumber('student')
+            ->name('tutor.students.report');
 
         Route::delete(
             '/students/{student}',
-            [
-                TutorStudentController::class,
-                'destroy',
-            ]
+            [TutorStudentController::class, 'destroy']
         )
-            ->whereNumber(
-                'student'
-            )
-            ->name(
-                'tutor.students.destroy'
-            );
+            ->whereNumber('student')
+            ->name('tutor.students.destroy');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -338,28 +181,34 @@ Route::middleware([
 
         Route::post(
             '/invitations',
-            [
-                TutorStudentController::class,
-                'storeInvitation',
-            ]
+            [TutorStudentController::class, 'storeInvitation']
         )
-            ->name(
-                'tutor.invitations.store'
-            );
+            ->name('tutor.invitations.store');
 
         Route::delete(
             '/invitations/{invitation}',
-            [
-                TutorStudentController::class,
-                'destroyInvitation',
-            ]
+            [TutorStudentController::class, 'destroyInvitation']
         )
-            ->whereNumber(
-                'invitation'
-            )
-            ->name(
-                'tutor.invitations.destroy'
-            );
+            ->whereNumber('invitation')
+            ->name('tutor.invitations.destroy');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Payments
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/payments', [PaymentController::class, 'tutorIndex'])
+            ->name('tutor.payments');
+
+        Route::patch(
+            '/payments/billing/{relationship}',
+            [PaymentController::class, 'updateBilling']
+        )
+            ->whereNumber('relationship')
+            ->name('tutor.payments.billing.update');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -367,56 +216,13 @@ Route::middleware([
         |--------------------------------------------------------------------------
         */
 
-        Route::get(
-            '/settings',
-            [
-                TutorSettingController::class,
-                'edit',
-            ]
-        )
-            ->name(
-                'tutor.settings.edit'
-            );
+        Route::get('/settings', [TutorSettingController::class, 'edit'])
+            ->name('tutor.settings.edit');
 
-        Route::patch(
-            '/settings',
-            [
-                TutorSettingController::class,
-                'update',
-            ]
-        )
-            ->name(
-                'tutor.settings.update'
-            );
-        
-            /*
-|--------------------------------------------------------------------------
-| Payments
-|--------------------------------------------------------------------------
-*/
-
-Route::get(
-    '/payments',
-    [
-        PaymentController::class,
-        'tutorIndex',
-    ]
-)
-    ->name(
-        'tutor.payments'
-    );
-
-Route::post(
-    '/payments',
-    [
-        PaymentController::class,
-        'store',
-    ]
-)
-    ->name(
-        'tutor.payments.store'
-    );
+        Route::patch('/settings', [TutorSettingController::class, 'update'])
+            ->name('tutor.settings.update');
     });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -424,74 +230,62 @@ Route::post(
 |--------------------------------------------------------------------------
 */
 
-Route::middleware([
-    'auth',
-    'role:student',
-])
+Route::middleware(['auth', 'role:student'])
     ->prefix('student')
     ->group(function () {
-        Route::get(
-            '/dashboard',
-            [
-                StudentController::class,
-                'dashboard',
-            ]
-        )
-            ->name(
-                'student.dashboard'
-            );
+
+        Route::get('/dashboard', [StudentController::class, 'dashboard'])
+            ->name('student.dashboard');
 
         Route::post(
             '/invitations/redeem',
-            [
-                StudentController::class,
-                'redeemInvitation',
-            ]
+            [StudentController::class, 'redeemInvitation']
         )
-            ->name(
-                'student.invitations.redeem'
-            );
+            ->name('student.invitations.redeem');
 
-        Route::get(
-            '/assignments',
-            [
-                StudentController::class,
-                'assignments',
-            ]
-        )
-            ->name(
-                'student.assignments'
-            );
+        Route::get('/assignments', [StudentController::class, 'assignments'])
+            ->name('student.assignments');
 
         Route::post(
             '/assignments/{assignment}/submission',
-            [
-                SubmissionController::class,
-                'store',
-            ]
+            [SubmissionController::class, 'store']
         )
-            ->whereNumber(
-                'assignment'
-            )
-            ->name(
-                'student.assignments.submit'
-            );
+            ->whereNumber('assignment')
+            ->name('student.assignments.submit');
+
+
         /*
+        |--------------------------------------------------------------------------
+        | Payments
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/payments', [PaymentController::class, 'studentIndex'])
+            ->name('student.payments');
+
+        Route::post(
+            '/payments/{payment}/checkout',
+            [StripeCheckoutController::class, 'store']
+        )
+            ->whereNumber('payment')
+            ->name('student.payments.checkout');
+    });
+
+
+/*
 |--------------------------------------------------------------------------
-| Payments
+| Stripe Webhook
 |--------------------------------------------------------------------------
+|
+| Must stay OUTSIDE auth/tutor/student middleware.
+| Stripe itself sends requests here.
+|
 */
 
-Route::get(
-    '/payments',
-    [
-        PaymentController::class,
-        'studentIndex',
-    ]
-)
-    ->name(
-        'student.payments'
-    );
-    });
+Route::post(
+    '/stripe/webhook',
+    [StripeWebhookController::class, 'handle']
+)->name('stripe.webhook');
+
 
 require __DIR__.'/auth.php';

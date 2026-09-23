@@ -3,14 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 import {
     Head,
-    useForm,
+    router,
     usePage,
 } from '@inertiajs/vue3';
 
 import {
     computed,
-    ref,
-    watch,
+    reactive,
 } from 'vue';
 
 const props = defineProps({
@@ -31,83 +30,80 @@ const successMessage = computed(
     () => page.props.flash?.success ?? null
 );
 
-const showCreateModal =
-    ref(false);
+const billingForms =
+    reactive(
+        Object.fromEntries(
+            props.relationships.map(
+                (
+                    relationship
+                ) => [
+                    relationship.id,
+                    {
+                        lesson_price:
+                            relationship.lesson_price,
 
-const form = useForm({
-    tutor_student_id: '',
-    amount: '',
-    period: '',
-});
+                        billing_type:
+                            relationship.billing_type,
 
-const selectedRelationship =
-    computed(() => {
-        return props.relationships.find(
-            (relationship) =>
-                String(
-                    relationship.id
-                ) ===
-                String(
-                    form.tutor_student_id
-                )
-        );
-    });
+                        processing:
+                            false,
 
-watch(
-    () => form.tutor_student_id,
-    () => {
-        if (
-            selectedRelationship
-                .value
-                ?.lesson_price
-        ) {
-            form.amount =
-                selectedRelationship
-                    .value
-                    .lesson_price;
-        }
+                        errors:
+                            {},
+                    },
+                ]
+            )
+        )
+    );
+
+const saveBilling = (
+    relationship
+) => {
+    const form =
+        billingForms[
+            relationship.id
+        ];
+
+    if (
+        ! form
+        ||
+        form.processing
+    ) {
+        return;
     }
-);
 
-const openCreateModal = () => {
-    form.reset();
-    form.clearErrors();
-
-    showCreateModal.value =
+    form.processing =
         true;
-};
 
-const closeCreateModal = () => {
-    if (form.processing) {
-        return;
-    }
+    form.errors =
+        {};
 
-    showCreateModal.value =
-        false;
-
-    form.reset();
-    form.clearErrors();
-};
-
-const submitPayment = () => {
-    if (form.processing) {
-        return;
-    }
-
-    form.post(
+    router.patch(
         route(
-            'tutor.payments.store'
+            'tutor.payments.billing.update',
+            relationship.id
         ),
+        {
+            lesson_price:
+                form.lesson_price,
+
+            billing_type:
+                form.billing_type,
+        },
         {
             preserveScroll:
                 true,
 
-            onSuccess: () => {
-                showCreateModal.value =
-                    false;
+            onError: (
+                errors
+            ) => {
+                form.errors =
+                    errors;
+            },
 
-                form.reset();
-                form.clearErrors();
+            onFinish: () => {
+                form.processing =
+                    false;
             },
         }
     );
@@ -160,43 +156,47 @@ const formatDate = (
         new Date(value)
     );
 };
+
+const billingLabel = (
+    value
+) => {
+    if (
+        value ===
+        'per_lesson'
+    ) {
+        return 'After each lesson';
+    }
+
+    if (
+        value ===
+        'monthly'
+    ) {
+        return 'End of month';
+    }
+
+    return '—';
+};
 </script>
 
 <template>
     <Head title="Payments" />
 
     <AuthenticatedLayout>
-        <div class="mx-auto max-w-6xl">
-            <header
-                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1
-                        class="text-2xl font-semibold tracking-tight text-slate-950"
-                    >
-                        Payments
-                    </h1>
-
-                    <p
-                        class="mt-1.5 text-sm text-slate-500"
-                    >
-                        Create and track payment requests.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    :disabled="
-                        relationships.length ===
-                        0
-                    "
-                    class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    @click="
-                        openCreateModal
-                    "
+        <div
+            class="mx-auto max-w-6xl"
+        >
+            <header>
+                <h1
+                    class="text-2xl font-semibold tracking-tight text-slate-950"
                 >
-                    Create payment
-                </button>
+                    Payments
+                </h1>
+
+                <p
+                    class="mt-1.5 text-sm text-slate-500"
+                >
+                    Manage billing settings and track automatically generated payments.
+                </p>
             </header>
 
             <div
@@ -208,6 +208,7 @@ const formatDate = (
                 }}
             </div>
 
+            <!-- Billing settings -->
             <section
                 class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
@@ -217,13 +218,248 @@ const formatDate = (
                     <h2
                         class="text-base font-semibold text-slate-900"
                     >
-                        Payment requests
+                        Billing settings
                     </h2>
 
                     <p
                         class="mt-1 text-sm text-slate-500"
                     >
-                        Payments requested from your students.
+                        Set the lesson price and payment schedule for each student and subject.
+                    </p>
+                </div>
+
+                <div
+                    v-if="
+                        relationships.length ===
+                        0
+                    "
+                    class="px-5 py-10"
+                >
+                    <p
+                        class="text-sm font-medium text-slate-900"
+                    >
+                        No students yet
+                    </p>
+
+                    <p
+                        class="mt-1 text-sm text-slate-500"
+                    >
+                        Billing settings will appear here after a student is linked to your account.
+                    </p>
+                </div>
+
+                <div
+                    v-else
+                    class="overflow-x-auto"
+                >
+                    <table
+                        class="min-w-full text-left"
+                    >
+                        <thead
+                            class="bg-slate-50"
+                        >
+                            <tr
+                                class="border-b border-slate-200"
+                            >
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Student
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Subject
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Lesson price
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Billing schedule
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-right text-xs font-medium text-slate-500"
+                                >
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody
+                            class="divide-y divide-slate-100"
+                        >
+                            <tr
+                                v-for="relationship in relationships"
+                                :key="
+                                    relationship.id
+                                "
+                            >
+                                <td
+                                    class="px-5 py-4"
+                                >
+                                    <p
+                                        class="text-sm font-medium text-slate-900"
+                                    >
+                                        {{
+                                            relationship.student_name
+                                        }}
+                                    </p>
+
+                                    <p
+                                        class="mt-0.5 text-xs text-slate-500"
+                                    >
+                                        {{
+                                            relationship.student_email
+                                        }}
+                                    </p>
+                                </td>
+
+                                <td
+                                    class="px-5 py-4 text-sm text-slate-600"
+                                >
+                                    {{
+                                        relationship.subject
+                                    }}
+                                </td>
+
+                                <td
+                                    class="px-5 py-4"
+                                >
+                                    <div
+                                        class="relative w-36"
+                                    >
+                                        <input
+                                            v-model="
+                                                billingForms[
+                                                    relationship.id
+                                                ].lesson_price
+                                            "
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            class="block w-full rounded-md border-slate-300 pr-12 text-sm"
+                                        />
+
+                                        <span
+                                            class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-slate-500"
+                                        >
+                                            PLN
+                                        </span>
+                                    </div>
+
+                                    <p
+                                        v-if="
+                                            billingForms[
+                                                relationship.id
+                                            ].errors.lesson_price
+                                        "
+                                        class="mt-1 max-w-40 text-xs text-red-600"
+                                    >
+                                        {{
+                                            billingForms[
+                                                relationship.id
+                                            ].errors.lesson_price
+                                        }}
+                                    </p>
+                                </td>
+
+                                <td
+                                    class="px-5 py-4"
+                                >
+                                    <select
+                                        v-model="
+                                            billingForms[
+                                                relationship.id
+                                            ].billing_type
+                                        "
+                                        class="block w-48 rounded-md border-slate-300 bg-white text-sm"
+                                    >
+                                        <option
+                                            value="per_lesson"
+                                        >
+                                            After each lesson
+                                        </option>
+
+                                        <option
+                                            value="monthly"
+                                        >
+                                            End of month
+                                        </option>
+                                    </select>
+
+                                    <p
+                                        v-if="
+                                            billingForms[
+                                                relationship.id
+                                            ].errors.billing_type
+                                        "
+                                        class="mt-1 max-w-48 text-xs text-red-600"
+                                    >
+                                        {{
+                                            billingForms[
+                                                relationship.id
+                                            ].errors.billing_type
+                                        }}
+                                    </p>
+                                </td>
+
+                                <td
+                                    class="px-5 py-4 text-right"
+                                >
+                                    <button
+                                        type="button"
+                                        :disabled="
+                                            billingForms[
+                                                relationship.id
+                                            ].processing
+                                        "
+                                        class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                        @click="
+                                            saveBilling(
+                                                relationship
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            billingForms[
+                                                relationship.id
+                                            ].processing
+                                                ? 'Saving...'
+                                                : 'Save'
+                                        }}
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Payment history -->
+            <section
+                class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            >
+                <div
+                    class="border-b border-slate-200 px-5 py-4"
+                >
+                    <h2
+                        class="text-base font-semibold text-slate-900"
+                    >
+                        Payment history
+                    </h2>
+
+                    <p
+                        class="mt-1 text-sm text-slate-500"
+                    >
+                        Payments are generated automatically from completed lessons.
                     </p>
                 </div>
 
@@ -243,7 +479,7 @@ const formatDate = (
                     <p
                         class="mt-1 text-sm text-slate-500"
                     >
-                        Create a payment request for a student.
+                        A payment will appear here automatically after a billable lesson is completed.
                     </p>
                 </div>
 
@@ -281,6 +517,18 @@ const formatDate = (
                                 <th
                                     class="px-5 py-3 text-xs font-medium text-slate-500"
                                 >
+                                    Billing
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
+                                    Lessons
+                                </th>
+
+                                <th
+                                    class="px-5 py-3 text-xs font-medium text-slate-500"
+                                >
                                     Amount
                                 </th>
 
@@ -303,7 +551,9 @@ const formatDate = (
                         >
                             <tr
                                 v-for="payment in payments"
-                                :key="payment.id"
+                                :key="
+                                    payment.id
+                                "
                             >
                                 <td
                                     class="px-5 py-4"
@@ -338,6 +588,25 @@ const formatDate = (
                                 >
                                     {{
                                         payment.period
+                                    }}
+                                </td>
+
+                                <td
+                                    class="px-5 py-4 text-sm text-slate-600"
+                                >
+                                    {{
+                                        billingLabel(
+                                            payment.billing_type
+                                        )
+                                    }}
+                                </td>
+
+                                <td
+                                    class="px-5 py-4 text-sm text-slate-600"
+                                >
+                                    {{
+                                        payment.lesson_count
+                                        ?? '—'
                                     }}
                                 </td>
 
@@ -387,213 +656,6 @@ const formatDate = (
                     </table>
                 </div>
             </section>
-        </div>
-
-        <div
-            v-if="showCreateModal"
-            class="fixed inset-0 z-[70]"
-        >
-            <button
-                type="button"
-                class="absolute inset-0 bg-slate-950/30"
-                @click="
-                    closeCreateModal
-                "
-            ></button>
-
-            <div
-                class="absolute inset-x-4 top-20 mx-auto max-w-lg rounded-xl bg-white shadow-xl"
-            >
-                <div
-                    class="flex items-start justify-between border-b border-slate-200 px-6 py-5"
-                >
-                    <div>
-                        <h2
-                            class="text-lg font-semibold text-slate-950"
-                        >
-                            Create payment
-                        </h2>
-
-                        <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            Request a payment from a student.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="text-sm text-slate-500 hover:text-slate-950"
-                        @click="
-                            closeCreateModal
-                        "
-                    >
-                        Close
-                    </button>
-                </div>
-
-                <form
-                    class="space-y-5 p-6"
-                    @submit.prevent="
-                        submitPayment
-                    "
-                >
-                    <div>
-                        <label
-                            for="payment-student"
-                            class="block text-sm font-medium text-slate-700"
-                        >
-                            Student
-                        </label>
-
-                        <select
-                            id="payment-student"
-                            v-model="
-                                form.tutor_student_id
-                            "
-                            required
-                            class="mt-2 block w-full rounded-md border-slate-300 bg-white"
-                        >
-                            <option
-                                value=""
-                                disabled
-                            >
-                                Select student
-                            </option>
-
-                            <option
-                                v-for="relationship in relationships"
-                                :key="
-                                    relationship.id
-                                "
-                                :value="
-                                    relationship.id
-                                "
-                            >
-                                {{
-                                    relationship.student_name
-                                }}
-                                —
-                                {{
-                                    relationship.subject
-                                }}
-                            </option>
-                        </select>
-
-                        <p
-                            v-if="
-                                form.errors.tutor_student_id
-                            "
-                            class="mt-1 text-xs text-red-600"
-                        >
-                            {{
-                                form.errors.tutor_student_id
-                            }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            for="payment-period"
-                            class="block text-sm font-medium text-slate-700"
-                        >
-                            Period
-                        </label>
-
-                        <input
-                            id="payment-period"
-                            v-model="
-                                form.period
-                            "
-                            type="text"
-                            required
-                            placeholder="September 2026"
-                            class="mt-2 block w-full rounded-md border-slate-300"
-                        />
-
-                        <p
-                            v-if="
-                                form.errors.period
-                            "
-                            class="mt-1 text-xs text-red-600"
-                        >
-                            {{
-                                form.errors.period
-                            }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            for="payment-amount"
-                            class="block text-sm font-medium text-slate-700"
-                        >
-                            Amount
-                        </label>
-
-                        <div
-                            class="relative mt-2"
-                        >
-                            <input
-                                id="payment-amount"
-                                v-model="
-                                    form.amount
-                                "
-                                type="number"
-                                min="1"
-                                step="0.01"
-                                required
-                                class="block w-full rounded-md border-slate-300 pr-14"
-                            />
-
-                            <span
-                                class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-500"
-                            >
-                                PLN
-                            </span>
-                        </div>
-
-                        <p
-                            v-if="
-                                form.errors.amount
-                            "
-                            class="mt-1 text-xs text-red-600"
-                        >
-                            {{
-                                form.errors.amount
-                            }}
-                        </p>
-                    </div>
-
-                    <div
-                        class="flex justify-end gap-3 border-t border-slate-200 pt-5"
-                    >
-                        <button
-                            type="button"
-                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            @click="
-                                closeCreateModal
-                            "
-                        >
-                            Cancel
-                        </button>
-
-                        <button
-                            type="submit"
-                            :disabled="
-                                form.processing
-                            "
-                            class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
-                        >
-                            {{
-                                form.processing
-                                    ? 'Creating...'
-                                    : 'Create payment'
-                            }}
-                        </button>
-                    </div>
-                </form>
-            </div>
         </div>
     </AuthenticatedLayout>
 </template>
