@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HomeworkAiController;
 use App\Http\Controllers\InvitationImportController;
 use App\Http\Controllers\AssignmentAttachmentController;
 use App\Http\Controllers\LessonController;
@@ -131,6 +132,11 @@ Route::middleware(['auth', 'role:tutor'])
 
         Route::get('/assignments', [TutorController::class, 'assignments'])
             ->name('tutor.assignments');
+
+        Route::post(
+    '/assignments/generate-ai',
+    [HomeworkAiController::class, 'generate']
+)->name('tutor.assignments.generate-ai');
 
         Route::post('/assignments', [TutorController::class, 'storeAssignment'])
             ->name('tutor.assignments.store');

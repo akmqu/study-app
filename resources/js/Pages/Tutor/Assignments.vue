@@ -1,25 +1,13 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-
-import {
-    Head,
-    router,
-    useForm,
-    usePage,
-} from '@inertiajs/vue3';
-
-import {
-    computed,
-    ref,
-    watch,
-} from 'vue';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     assignments: {
         type: Array,
         default: () => [],
     },
-
     students: {
         type: Array,
         default: () => [],
@@ -28,41 +16,23 @@ const props = defineProps({
 
 const page = usePage();
 
-const successMessage = computed(
-    () => page.props.flash?.success ?? null
-);
+const successMessage = computed(() => page.props.flash?.success ?? null);
 
 const activeFilter = ref('all');
+const selectedAssignment = ref(null);
+const showCreateModal = ref(false);
+const deletingAssignmentId = ref(null);
+const attachmentInput = ref(null);
 
-const selectedAssignment =
-    ref(null);
-
-const showCreateModal =
-    ref(false);
-
-const deletingAssignmentId =
-    ref(null);
-
-const attachmentInput =
-    ref(null);
+const aiPrompt = ref('');
+const aiGenerating = ref(false);
+const aiError = ref('');
 
 const filters = [
-    {
-        key: 'all',
-        label: 'All',
-    },
-    {
-        key: 'todo',
-        label: 'To do',
-    },
-    {
-        key: 'awaiting_review',
-        label: 'Awaiting review',
-    },
-    {
-        key: 'graded',
-        label: 'Graded',
-    },
+    { key: 'all', label: 'All' },
+    { key: 'todo', label: 'To do' },
+    { key: 'awaiting_review', label: 'Awaiting review' },
+    { key: 'graded', label: 'Graded' },
 ];
 
 const createForm = useForm({
@@ -79,25 +49,15 @@ const reviewForm = useForm({
     feedback: '',
 });
 
-const selectedStudent =
-    computed(() => {
-        return props.students.find(
-            (student) =>
-                Number(student.id) ===
-                Number(
-                    createForm.student_id
-                )
-        );
-    });
+const selectedStudent = computed(() => {
+    return props.students.find(
+        (student) => Number(student.id) === Number(createForm.student_id)
+    );
+});
 
-const availableSubjects =
-    computed(() => {
-        return (
-            selectedStudent.value
-                ?.subjects
-            ?? []
-        );
-    });
+const availableSubjects = computed(() => {
+    return selectedStudent.value?.subjects ?? [];
+});
 
 watch(
     () => createForm.student_id,
@@ -106,21 +66,15 @@ watch(
     }
 );
 
-const filteredAssignments =
-    computed(() => {
-        if (
-            activeFilter.value ===
-            'all'
-        ) {
-            return props.assignments;
-        }
+const filteredAssignments = computed(() => {
+    if (activeFilter.value === 'all') {
+        return props.assignments;
+    }
 
-        return props.assignments.filter(
-            (assignment) =>
-                assignment.status ===
-                activeFilter.value
-        );
-    });
+    return props.assignments.filter(
+        (assignment) => assignment.status === activeFilter.value
+    );
+});
 
 const filterCount = (status) => {
     if (status === 'all') {
@@ -128,22 +82,13 @@ const filterCount = (status) => {
     }
 
     return props.assignments.filter(
-        (assignment) =>
-            assignment.status === status
+        (assignment) => assignment.status === status
     ).length;
 };
 
 const statusLabel = (status) => {
-    if (
-        status ===
-        'awaiting_review'
-    ) {
-        return 'Awaiting review';
-    }
-
-    if (status === 'graded') {
-        return 'Graded';
-    }
+    if (status === 'awaiting_review') return 'Awaiting review';
+    if (status === 'graded') return 'Graded';
 
     return 'To do';
 };
@@ -153,10 +98,7 @@ const statusClasses = (status) => {
         return 'bg-emerald-50 text-emerald-700';
     }
 
-    if (
-        status ===
-        'awaiting_review'
-    ) {
+    if (status === 'awaiting_review') {
         return 'bg-amber-50 text-amber-700';
     }
 
@@ -164,10 +106,7 @@ const statusClasses = (status) => {
 };
 
 const rowClasses = (assignment) => {
-    if (
-        assignment.status ===
-        'awaiting_review'
-    ) {
+    if (assignment.status === 'awaiting_review') {
         return 'hover:bg-amber-50/40';
     }
 
@@ -175,172 +114,153 @@ const rowClasses = (assignment) => {
 };
 
 const formatDate = (value) => {
-    if (!value) {
-        return 'No deadline';
-    }
+    if (!value) return 'No deadline';
 
-    return new Intl.DateTimeFormat(
-        undefined,
-        {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        }
-    ).format(
-        new Date(value)
-    );
+    return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    }).format(new Date(value));
 };
 
 const formatDateTime = (value) => {
-    if (!value) {
-        return '';
-    }
+    if (!value) return '';
 
-    return new Intl.DateTimeFormat(
-        undefined,
-        {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        }
-    ).format(
-        new Date(value)
-    );
+    return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(value));
 };
 
-const isOverdue = (
-    assignment
-) => {
-    if (
-        assignment.status !==
-            'todo'
-        || !assignment.deadline
-    ) {
+const isOverdue = (assignment) => {
+    if (assignment.status !== 'todo' || !assignment.deadline) {
         return false;
     }
 
-    return (
-        new Date(
-            assignment.deadline
-        ) < new Date()
-    );
+    return new Date(assignment.deadline) < new Date();
 };
 
 const resetCreateForm = () => {
     createForm.reset();
     createForm.clearErrors();
 
-    if (
-        attachmentInput.value
-    ) {
+    aiPrompt.value = '';
+    aiError.value = '';
+
+    if (attachmentInput.value) {
         attachmentInput.value.value = '';
     }
 };
 
 const openCreateModal = () => {
     resetCreateForm();
-
     showCreateModal.value = true;
 };
 
 const closeCreateModal = () => {
-    if (createForm.processing) {
+    if (createForm.processing || aiGenerating.value) {
         return;
     }
 
     showCreateModal.value = false;
-
     resetCreateForm();
 };
 
-const handleAttachments = (
-    event
-) => {
-    createForm.attachments =
-        Array.from(
-            event.target.files ?? []
+const handleAttachments = (event) => {
+    createForm.attachments = Array.from(event.target.files ?? []);
+};
+
+const generateWithAi = async () => {
+    const subject = String(createForm.subject ?? '').trim();
+    const prompt = String(aiPrompt.value ?? '').trim();
+
+    if (!subject) {
+        aiError.value = 'Choose a subject first.';
+        return;
+    }
+
+    if (!prompt) {
+        aiError.value = 'Enter a prompt for AI.';
+        return;
+    }
+
+    if (aiGenerating.value) {
+        return;
+    }
+
+    aiGenerating.value = true;
+    aiError.value = '';
+
+    try {
+        const response = await window.axios.post(
+            route('tutor.assignments.generate-ai'),
+            {
+                subject,
+                prompt,
+            }
         );
+
+        createForm.instructions = response.data.instructions ?? '';
+    } catch (error) {
+        aiError.value =
+            error.response?.data?.message
+            ?? 'AI generation failed. Please try again.';
+    } finally {
+        aiGenerating.value = false;
+    }
 };
 
 const submitAssignment = () => {
-    if (createForm.processing) {
+    if (createForm.processing || aiGenerating.value) {
         return;
     }
 
-    createForm.post(
-        route(
-            'tutor.assignments.store'
-        ),
-        {
-            preserveScroll: true,
-            forceFormData: true,
+    createForm.post(route('tutor.assignments.store'), {
+        preserveScroll: true,
+        forceFormData: true,
 
-            onSuccess: () => {
-                showCreateModal.value =
-                    false;
-
-                resetCreateForm();
-            },
-        }
-    );
+        onSuccess: () => {
+            showCreateModal.value = false;
+            resetCreateForm();
+        },
+    });
 };
 
-const openAssignment = (
-    assignment
-) => {
-    selectedAssignment.value =
-        assignment;
+const openAssignment = (assignment) => {
+    selectedAssignment.value = assignment;
 
     reviewForm.clearErrors();
-
-    reviewForm.grade =
-        assignment.grade ?? '';
-
-    reviewForm.feedback =
-        assignment.feedback ?? '';
+    reviewForm.grade = assignment.grade ?? '';
+    reviewForm.feedback = assignment.feedback ?? '';
 };
 
 const closeAssignment = () => {
-    if (
-        deletingAssignmentId.value
-        || reviewForm.processing
-    ) {
+    if (deletingAssignmentId.value || reviewForm.processing) {
         return;
     }
 
-    selectedAssignment.value =
-        null;
-
+    selectedAssignment.value = null;
     reviewForm.reset();
     reviewForm.clearErrors();
 };
 
 const saveReview = () => {
-    const submission =
-        selectedAssignment.value
-            ?.submission;
+    const submission = selectedAssignment.value?.submission;
 
-    if (
-        !submission?.id
-        || reviewForm.processing
-    ) {
+    if (!submission?.id || reviewForm.processing) {
         return;
     }
 
     reviewForm.patch(
-        route(
-            'tutor.submissions.grade',
-            submission.id
-        ),
+        route('tutor.submissions.grade', submission.id),
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                selectedAssignment.value =
-                    null;
-
+                selectedAssignment.value = null;
                 reviewForm.reset();
                 reviewForm.clearErrors();
             },
@@ -348,43 +268,32 @@ const saveReview = () => {
     );
 };
 
-const deleteAssignment = (
-    assignment
-) => {
-    if (
-        deletingAssignmentId.value
-    ) {
+const deleteAssignment = (assignment) => {
+    if (deletingAssignmentId.value) {
         return;
     }
 
-    const confirmed =
-        window.confirm(
-            `Delete "${assignment.title}"?`
-        );
+    const confirmed = window.confirm(
+        `Delete "${assignment.title}"?`
+    );
 
     if (!confirmed) {
         return;
     }
 
-    deletingAssignmentId.value =
-        assignment.id;
+    deletingAssignmentId.value = assignment.id;
 
     router.delete(
-        route(
-            'tutor.assignments.destroy',
-            assignment.id
-        ),
+        route('tutor.assignments.destroy', assignment.id),
         {
             preserveScroll: true,
 
             onSuccess: () => {
-                selectedAssignment.value =
-                    null;
+                selectedAssignment.value = null;
             },
 
             onFinish: () => {
-                deletingAssignmentId.value =
-                    null;
+                deletingAssignmentId.value = null;
             },
         }
     );
@@ -395,10 +304,7 @@ const deleteAssignment = (
     <Head title="Assignments" />
 
     <AuthenticatedLayout>
-        <div
-            class="mx-auto max-w-6xl"
-        >
-            <!-- Header -->
+        <div class="mx-auto max-w-6xl">
             <header
                 class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
             >
@@ -409,29 +315,21 @@ const deleteAssignment = (
                         Assignments
                     </h1>
 
-                    <p
-                        class="mt-1.5 text-sm text-slate-500"
-                    >
-                        Create, review and manage
-                        student homework.
+                    <p class="mt-1.5 text-sm text-slate-500">
+                        Create, review and manage student homework.
                     </p>
                 </div>
 
                 <button
                     type="button"
-                    :disabled="
-                        students.length === 0
-                    "
+                    :disabled="students.length === 0"
                     class="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    @click="
-                        openCreateModal
-                    "
+                    @click="openCreateModal"
                 >
                     + New assignment
                 </button>
             </header>
 
-            <!-- Success -->
             <div
                 v-if="successMessage"
                 class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
@@ -439,173 +337,104 @@ const deleteAssignment = (
                 {{ successMessage }}
             </div>
 
-            <!-- Main assignments card -->
             <section
                 class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
             >
-                <!-- Filters -->
-                <div
-                    class="border-b border-slate-200 px-5"
-                >
-                    <div
-                        class="flex flex-wrap gap-1"
-                    >
+                <div class="border-b border-slate-200 px-5">
+                    <div class="flex flex-wrap gap-1">
                         <button
                             v-for="filter in filters"
                             :key="filter.key"
                             type="button"
                             class="-mb-px border-b-2 px-3 py-4 text-sm font-medium transition"
                             :class="
-                                activeFilter ===
-                                filter.key
+                                activeFilter === filter.key
                                     ? 'border-slate-900 text-slate-950'
                                     : 'border-transparent text-slate-500 hover:text-slate-900'
                             "
-                            @click="
-                                activeFilter =
-                                    filter.key
-                            "
+                            @click="activeFilter = filter.key"
                         >
                             {{ filter.label }}
 
-                            <span
-                                class="ml-1.5 text-xs text-slate-400"
-                            >
-                                {{
-                                    filterCount(
-                                        filter.key
-                                    )
-                                }}
+                            <span class="ml-1.5 text-xs text-slate-400">
+                                {{ filterCount(filter.key) }}
                             </span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Empty -->
                 <div
-                    v-if="
-                        filteredAssignments.length
-                        === 0
-                    "
+                    v-if="filteredAssignments.length === 0"
                     class="px-5 py-14"
                 >
-                    <p
-                        class="text-sm font-medium text-slate-900"
-                    >
+                    <p class="text-sm font-medium text-slate-900">
                         No assignments here
                     </p>
 
-                    <p
-                        class="mt-1 text-sm text-slate-500"
-                    >
-                        There are no assignments
-                        in this category.
+                    <p class="mt-1 text-sm text-slate-500">
+                        There are no assignments in this category.
                     </p>
                 </div>
 
-                <!-- Rows -->
                 <div v-else>
                     <button
                         v-for="assignment in filteredAssignments"
                         :key="assignment.id"
                         type="button"
                         class="group grid w-full gap-3 border-b border-slate-100 px-5 py-5 text-left transition last:border-b-0 sm:grid-cols-[minmax(0,1fr)_160px_170px_24px] sm:items-center"
-                        :class="
-                            rowClasses(
-                                assignment
-                            )
-                        "
-                        @click="
-                            openAssignment(
-                                assignment
-                            )
-                        "
+                        :class="rowClasses(assignment)"
+                        @click="openAssignment(assignment)"
                     >
-                        <!-- Assignment -->
                         <div class="min-w-0">
-                            <div
-                                class="flex flex-wrap items-center gap-2"
-                            >
+                            <div class="flex flex-wrap items-center gap-2">
                                 <p
                                     class="truncate text-sm font-medium text-slate-900"
                                 >
-                                    {{
-                                        assignment.title
-                                    }}
+                                    {{ assignment.title }}
                                 </p>
 
                                 <span
-                                    v-if="
-                                        isOverdue(
-                                            assignment
-                                        )
-                                    "
+                                    v-if="isOverdue(assignment)"
                                     class="text-xs font-medium text-red-600"
                                 >
                                     Overdue
                                 </span>
                             </div>
 
-                            <p
-                                class="mt-1 truncate text-sm text-slate-500"
-                            >
-                                {{
-                                    assignment.student
-                                        ?.name
-                                }}
+                            <p class="mt-1 truncate text-sm text-slate-500">
+                                {{ assignment.student?.name }}
 
                                 <span
-                                    v-if="
-                                        assignment.subject
-                                    "
+                                    v-if="assignment.subject"
                                     class="mx-1.5 text-slate-300"
                                 >
                                     ·
                                 </span>
 
-                                {{
-                                    assignment.subject
-                                }}
+                                {{ assignment.subject }}
                             </p>
                         </div>
 
-                        <!-- Deadline -->
                         <p
                             class="text-sm"
                             :class="
-                                isOverdue(
-                                    assignment
-                                )
+                                isOverdue(assignment)
                                     ? 'text-red-600'
                                     : 'text-slate-500'
                             "
                         >
-                            {{
-                                formatDate(
-                                    assignment.deadline
-                                )
-                            }}
+                            {{ formatDate(assignment.deadline) }}
                         </p>
 
-                        <!-- Status -->
                         <div>
                             <span
                                 class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
-                                :class="
-                                    statusClasses(
-                                        assignment.status
-                                    )
-                                "
+                                :class="statusClasses(assignment.status)"
                             >
-                                {{
-                                    statusLabel(
-                                        assignment.status
-                                    )
-                                }}
+                                {{ statusLabel(assignment.status) }}
                             </span>
                         </div>
 
-                        <!-- Arrow -->
                         <div
                             class="hidden text-right text-slate-300 transition group-hover:text-slate-700 sm:block"
                         >
@@ -625,9 +454,7 @@ const deleteAssignment = (
                 type="button"
                 class="absolute inset-0 bg-slate-950/25"
                 aria-label="Close"
-                @click="
-                    closeCreateModal
-                "
+                @click="closeCreateModal"
             ></button>
 
             <div
@@ -637,26 +464,20 @@ const deleteAssignment = (
                     class="flex items-start justify-between border-b border-slate-200 px-6 py-5"
                 >
                     <div>
-                        <h2
-                            class="text-lg font-semibold text-slate-950"
-                        >
+                        <h2 class="text-lg font-semibold text-slate-950">
                             New assignment
                         </h2>
 
-                        <p
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            Create homework for
-                            a student.
+                        <p class="mt-1 text-sm text-slate-500">
+                            Create homework for a student.
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="text-sm text-slate-500 hover:text-slate-950"
-                        @click="
-                            closeCreateModal
-                        "
+                        :disabled="aiGenerating"
+                        class="text-sm text-slate-500 hover:text-slate-950 disabled:opacity-40"
+                        @click="closeCreateModal"
                     >
                         Close
                     </button>
@@ -664,9 +485,7 @@ const deleteAssignment = (
 
                 <form
                     class="space-y-5 p-6"
-                    @submit.prevent="
-                        submitAssignment
-                    "
+                    @submit.prevent="submitAssignment"
                 >
                     <div>
                         <label
@@ -676,16 +495,11 @@ const deleteAssignment = (
                         </label>
 
                         <select
-                            v-model="
-                                createForm.student_id
-                            "
+                            v-model="createForm.student_id"
                             required
                             class="mt-2 block w-full rounded-md border-slate-300"
                         >
-                            <option
-                                value=""
-                                disabled
-                            >
+                            <option value="" disabled>
                                 Select student
                             </option>
 
@@ -699,16 +513,10 @@ const deleteAssignment = (
                         </select>
 
                         <p
-                            v-if="
-                                createForm.errors
-                                    .student_id
-                            "
+                            v-if="createForm.errors.student_id"
                             class="mt-1 text-xs text-red-600"
                         >
-                            {{
-                                createForm.errors
-                                    .student_id
-                            }}
+                            {{ createForm.errors.student_id }}
                         </p>
                     </div>
 
@@ -720,19 +528,12 @@ const deleteAssignment = (
                         </label>
 
                         <select
-                            v-model="
-                                createForm.subject
-                            "
+                            v-model="createForm.subject"
                             required
-                            :disabled="
-                                !createForm.student_id
-                            "
+                            :disabled="!createForm.student_id"
                             class="mt-2 block w-full rounded-md border-slate-300 disabled:bg-slate-100"
                         >
-                            <option
-                                value=""
-                                disabled
-                            >
+                            <option value="" disabled>
                                 Select subject
                             </option>
 
@@ -746,19 +547,14 @@ const deleteAssignment = (
                         </select>
 
                         <p
-                            v-if="
-                                createForm.errors
-                                    .subject
-                            "
+                            v-if="createForm.errors.subject"
                             class="mt-1 text-xs text-red-600"
                         >
-                            {{
-                                createForm.errors
-                                    .subject
-                            }}
+                            {{ createForm.errors.subject }}
                         </p>
                     </div>
 
+                    <!-- Normal assignment title -->
                     <div>
                         <label
                             class="block text-sm font-medium text-slate-700"
@@ -767,26 +563,72 @@ const deleteAssignment = (
                         </label>
 
                         <input
-                            v-model="
-                                createForm.title
-                            "
+                            v-model="createForm.title"
                             type="text"
                             required
+                            placeholder="e.g. Homework #3"
                             class="mt-2 block w-full rounded-md border-slate-300"
                         />
 
                         <p
-                            v-if="
-                                createForm.errors.title
-                            "
+                            v-if="createForm.errors.title"
                             class="mt-1 text-xs text-red-600"
                         >
-                            {{
-                                createForm.errors.title
-                            }}
+                            {{ createForm.errors.title }}
                         </p>
                     </div>
 
+                    <!-- AI prompt -->
+                    <div
+                        class="rounded-lg border border-indigo-100 bg-indigo-50/50 p-4"
+                    >
+                        <div>
+                            <p
+                                class="text-sm font-medium text-slate-900"
+                            >
+                                ✨ AI Assistant
+                            </p>
+
+                            <p
+                                class="mt-1 text-xs leading-5 text-slate-500"
+                            >
+                                Describe what homework you want Gemini to generate.
+                            </p>
+                        </div>
+
+                        <textarea
+                            v-model="aiPrompt"
+                            rows="3"
+                            placeholder="e.g. Create 6 exercises about adding and subtracting fractions for a 12-year-old. Make the last two exercises harder."
+                            class="mt-3 block w-full resize-y rounded-md border-slate-300 bg-white"
+                        ></textarea>
+
+                        <p
+                            v-if="aiError"
+                            class="mt-2 text-xs text-red-600"
+                        >
+                            {{ aiError }}
+                        </p>
+
+                        <button
+                            type="button"
+                            :disabled="
+                                aiGenerating
+                                || !createForm.subject
+                                || !aiPrompt.trim()
+                            "
+                            class="mt-3 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            @click="generateWithAi"
+                        >
+                            {{
+                                aiGenerating
+                                    ? 'Generating...'
+                                    : '✨ Generate instructions'
+                            }}
+                        </button>
+                    </div>
+
+                    <!-- Instructions -->
                     <div>
                         <label
                             class="block text-sm font-medium text-slate-700"
@@ -795,12 +637,15 @@ const deleteAssignment = (
                         </label>
 
                         <textarea
-                            v-model="
-                                createForm.instructions
-                            "
-                            rows="5"
+                            v-model="createForm.instructions"
+                            rows="7"
+                            placeholder="Write instructions yourself or generate them with AI..."
                             class="mt-2 block w-full resize-y rounded-md border-slate-300"
                         ></textarea>
+
+                        <p class="mt-2 text-xs text-slate-400">
+                            You can edit the generated instructions before creating the assignment.
+                        </p>
                     </div>
 
                     <div>
@@ -811,9 +656,7 @@ const deleteAssignment = (
                         </label>
 
                         <input
-                            v-model="
-                                createForm.deadline
-                            "
+                            v-model="createForm.deadline"
                             type="date"
                             class="mt-2 block w-full rounded-md border-slate-300"
                         />
@@ -832,14 +675,10 @@ const deleteAssignment = (
                             multiple
                             accept=".pdf,.doc,.docx"
                             class="mt-2 block w-full text-sm text-slate-500"
-                            @change="
-                                handleAttachments
-                            "
+                            @change="handleAttachments"
                         />
 
-                        <p
-                            class="mt-2 text-xs text-slate-400"
-                        >
+                        <p class="mt-2 text-xs text-slate-400">
                             PDF or Word. Maximum 10 MB per file.
                         </p>
                     </div>
@@ -849,10 +688,9 @@ const deleteAssignment = (
                     >
                         <button
                             type="button"
-                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            @click="
-                                closeCreateModal
-                            "
+                            :disabled="aiGenerating"
+                            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                            @click="closeCreateModal"
                         >
                             Cancel
                         </button>
@@ -861,6 +699,7 @@ const deleteAssignment = (
                             type="submit"
                             :disabled="
                                 createForm.processing
+                                || aiGenerating
                             "
                             class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
                         >
@@ -884,9 +723,7 @@ const deleteAssignment = (
                 type="button"
                 class="absolute inset-0 bg-slate-950/20"
                 aria-label="Close"
-                @click="
-                    closeAssignment
-                "
+                @click="closeAssignment"
             ></button>
 
             <aside
@@ -899,37 +736,24 @@ const deleteAssignment = (
                         <h2
                             class="text-xl font-semibold text-slate-950"
                         >
-                            {{
-                                selectedAssignment.title
-                            }}
+                            {{ selectedAssignment.title }}
                         </h2>
 
-                        <p
-                            class="mt-2 text-sm text-slate-500"
-                        >
-                            {{
-                                selectedAssignment
-                                    .student?.name
-                            }}
+                        <p class="mt-2 text-sm text-slate-500">
+                            {{ selectedAssignment.student?.name }}
 
-                            <span
-                                class="mx-1 text-slate-300"
-                            >
+                            <span class="mx-1 text-slate-300">
                                 ·
                             </span>
 
-                            {{
-                                selectedAssignment.subject
-                            }}
+                            {{ selectedAssignment.subject }}
                         </p>
                     </div>
 
                     <button
                         type="button"
                         class="text-sm text-slate-500 hover:text-slate-950"
-                        @click="
-                            closeAssignment
-                        "
+                        @click="closeAssignment"
                     >
                         Close
                     </button>
@@ -941,9 +765,7 @@ const deleteAssignment = (
                     <div
                         class="flex justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Status
                         </dt>
 
@@ -968,9 +790,7 @@ const deleteAssignment = (
                     <div
                         class="flex justify-between gap-4 py-4"
                     >
-                        <dt
-                            class="text-sm text-slate-500"
-                        >
+                        <dt class="text-sm text-slate-500">
                             Deadline
                         </dt>
 
@@ -989,9 +809,7 @@ const deleteAssignment = (
                 </dl>
 
                 <section
-                    v-if="
-                        selectedAssignment.instructions
-                    "
+                    v-if="selectedAssignment.instructions"
                     class="mt-8"
                 >
                     <h3
@@ -1003,16 +821,12 @@ const deleteAssignment = (
                     <p
                         class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600"
                     >
-                        {{
-                            selectedAssignment.instructions
-                        }}
+                        {{ selectedAssignment.instructions }}
                     </p>
                 </section>
 
                 <section
-                    v-if="
-                        selectedAssignment.submission
-                    "
+                    v-if="selectedAssignment.submission"
                     class="mt-8"
                 >
                     <h3
@@ -1021,9 +835,7 @@ const deleteAssignment = (
                         Student submission
                     </h3>
 
-                    <p
-                        class="mt-2 text-sm text-slate-500"
-                    >
+                    <p class="mt-2 text-sm text-slate-500">
                         Submitted
                         {{
                             formatDateTime(
@@ -1078,11 +890,8 @@ const deleteAssignment = (
                     </a>
                 </section>
 
-                <!-- Review -->
                 <section
-                    v-if="
-                        selectedAssignment.submission
-                    "
+                    v-if="selectedAssignment.submission"
                     class="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-5"
                 >
                     <h3
@@ -1091,22 +900,16 @@ const deleteAssignment = (
                         Review submission
                     </h3>
 
-                    <div
-                        class="mt-4"
-                    >
+                    <div class="mt-4">
                         <label
                             class="block text-sm font-medium text-slate-700"
                         >
                             Grade
                         </label>
 
-                        <div
-                            class="mt-2 flex items-center gap-2"
-                        >
+                        <div class="mt-2 flex items-center gap-2">
                             <input
-                                v-model="
-                                    reviewForm.grade
-                                "
+                                v-model="reviewForm.grade"
                                 type="number"
                                 min="0"
                                 max="100"
@@ -1114,28 +917,20 @@ const deleteAssignment = (
                                 class="w-28 rounded-md border-slate-300"
                             />
 
-                            <span
-                                class="text-sm text-slate-500"
-                            >
+                            <span class="text-sm text-slate-500">
                                 / 100
                             </span>
                         </div>
 
                         <p
-                            v-if="
-                                reviewForm.errors.grade
-                            "
+                            v-if="reviewForm.errors.grade"
                             class="mt-1 text-xs text-red-600"
                         >
-                            {{
-                                reviewForm.errors.grade
-                            }}
+                            {{ reviewForm.errors.grade }}
                         </p>
                     </div>
 
-                    <div
-                        class="mt-4"
-                    >
+                    <div class="mt-4">
                         <label
                             class="block text-sm font-medium text-slate-700"
                         >
@@ -1143,41 +938,30 @@ const deleteAssignment = (
                         </label>
 
                         <textarea
-                            v-model="
-                                reviewForm.feedback
-                            "
+                            v-model="reviewForm.feedback"
                             rows="5"
                             placeholder="Add feedback for the student..."
                             class="mt-2 block w-full resize-y rounded-md border-slate-300"
                         ></textarea>
 
                         <p
-                            v-if="
-                                reviewForm.errors.feedback
-                            "
+                            v-if="reviewForm.errors.feedback"
                             class="mt-1 text-xs text-red-600"
                         >
-                            {{
-                                reviewForm.errors.feedback
-                            }}
+                            {{ reviewForm.errors.feedback }}
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        :disabled="
-                            reviewForm.processing
-                        "
+                        :disabled="reviewForm.processing"
                         class="mt-4 w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
-                        @click="
-                            saveReview
-                        "
+                        @click="saveReview"
                     >
                         {{
                             reviewForm.processing
                                 ? 'Saving...'
-                                : selectedAssignment.status ===
-                                    'graded'
+                                : selectedAssignment.status === 'graded'
                                     ? 'Update grade'
                                     : 'Save grade'
                         }}
@@ -1188,9 +972,7 @@ const deleteAssignment = (
                     v-else
                     class="mt-8 rounded-lg bg-slate-50 p-4"
                 >
-                    <p
-                        class="text-sm text-slate-500"
-                    >
+                    <p class="text-sm text-slate-500">
                         The student has not submitted work yet.
                     </p>
                 </div>
@@ -1201,8 +983,8 @@ const deleteAssignment = (
                     <button
                         type="button"
                         :disabled="
-                            deletingAssignmentId ===
-                            selectedAssignment.id
+                            deletingAssignmentId
+                            === selectedAssignment.id
                         "
                         class="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-40"
                         @click="
@@ -1212,8 +994,8 @@ const deleteAssignment = (
                         "
                     >
                         {{
-                            deletingAssignmentId ===
-                            selectedAssignment.id
+                            deletingAssignmentId
+                            === selectedAssignment.id
                                 ? 'Deleting...'
                                 : 'Delete assignment'
                         }}
